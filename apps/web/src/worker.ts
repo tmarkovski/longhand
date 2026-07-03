@@ -51,9 +51,11 @@ const SPECS: Record<EngineId, EngineSpec> = {
           id: "graves",
           label: "longhand",
           renderer: "pen",
+          ribbonWidthFactor: 3,
           styles: model.styles,
           alphabet: model.assets.alphabet,
           nullStyleLabel: "freehand",
+          defaultStyle: null,
           maxTextLength: 75,
         },
       };
@@ -72,9 +74,13 @@ const SPECS: Record<EngineId, EngineSpec> = {
           id: "calligrapher",
           label: "calligrapher",
           renderer: "ribbon",
+          ribbonWidthFactor: 1,
           styles: [...EXPOSED_STYLES],
           alphabet: [...CALLIGRAPHER_ALPHABET],
-          nullStyleLabel: "random",
+          // No freehand equivalent: the model always writes with a style,
+          // so there's no null option and style 1 is the default.
+          nullStyleLabel: null,
+          defaultStyle: EXPOSED_STYLES[0]!,
           maxTextLength: 90,
         },
       };

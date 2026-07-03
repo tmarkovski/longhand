@@ -52,6 +52,14 @@ await writeButton.click();
 await page.waitForTimeout(10_000);
 const freehandInk = await inkPixels();
 
+// Stroke type is engine-independent: flip the finished graves line to
+// ribbon, confirm the in-place repaint still inks, and flip back.
+await page.getByRole("radio", { name: "ribbon" }).click();
+await page.waitForTimeout(500);
+const gravesRibbonInk = await inkPixels();
+await page.getByRole("radio", { name: "pen", exact: true }).click();
+await page.waitForTimeout(500);
+
 // Styled write (exercises priming in the worker), via the preview picker.
 await page.click(".style-picker-trigger");
 await page.getByRole("option", { name: "style 3", exact: true }).click();
@@ -72,6 +80,14 @@ const waitForIdle = () =>
   );
 await page.selectOption(".engine-select", "calligrapher");
 await waitForIdle();
+// Calligrapher has no freehand/random mode: style 1 is preselected.
+const defaultStyle = await page
+  .locator(".style-picker-trigger")
+  .getAttribute("aria-label");
+if (defaultStyle !== "handwriting style: style 1") {
+  console.error(`calligrapher default style is "${defaultStyle}", expected style 1`);
+  process.exit(1);
+}
 await page.click(".style-picker-trigger");
 await page.getByRole("option", { name: "style 6", exact: true }).click();
 await writeButton.click();
@@ -94,6 +110,7 @@ await page.screenshot({ path: screenshotPath, fullPage: true });
 await browser.close();
 
 console.log(`freehand ink pixels:     ${freehandInk}`);
+console.log(`graves-as-ribbon pixels: ${gravesRibbonInk}`);
 console.log(`styled ink pixels:       ${styledInk}`);
 console.log(`calligrapher ink pixels: ${calligrapherInk}`);
 console.log(`restyled ink pixels:     ${restyledInk}`);
@@ -103,6 +120,10 @@ if (errors.length > 0) {
 }
 if (freehandInk < 1000 || styledInk < 1000 || calligrapherInk < 1000) {
   console.error("canvas looks empty — expected at least 1000 ink pixels");
+  process.exit(1);
+}
+if (gravesRibbonInk < 1000) {
+  console.error("graves line rendered as ribbon looks empty");
   process.exit(1);
 }
 if (restyledInk <= calligrapherInk) {

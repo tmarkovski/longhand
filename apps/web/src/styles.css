@@ -203,6 +203,29 @@ header h1 {
   color: #6f6a5e;
 }
 
+.stroke-toggle {
+  display: flex;
+  border: 1px solid #d8d1c0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fffdf8;
+}
+
+.stroke-option {
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 13px;
+  border: none;
+  background: transparent;
+  color: #6f6a5e;
+  cursor: pointer;
+}
+
+.stroke-option.selected {
+  background: #1c1c28;
+  color: #fffdf8;
+}
+
 .palette {
   display: flex;
   gap: 8px;
