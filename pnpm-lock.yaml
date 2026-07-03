@@ -63,6 +63,9 @@ importers:
         specifier: workspace:*
         version: link:../ink-core
     devDependencies:
+      '@longhand/ink-render':
+        specifier: workspace:*
+        version: link:../ink-render
       '@types/node':
         specifier: ^26.1.0
         version: 26.1.0
