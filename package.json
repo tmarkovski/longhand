@@ -1,0 +1,10 @@
+{
+  "name": "cali",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "gen:assets": "uv run --directory tools python export_weights.py && uv run --directory tools python make_goldens.py"
+  }
+}

@@ -145,3 +145,4 @@ Details that matter:
 | 2026-07-03 | v1 backend | Client-side only. Revisit at Phase 3 or at the first of: API product, og-image link previews, saved galleries, long-text share links |
 | 2026-07-03 | Business model | Free for now, no paywall plumbing in the MVP. Pro tier only after we own commercially clean weights |
 | 2026-07-03 | Name | "Cali" stays as working title; brand exploration running separately. Final call before the week-4 deploy |
+| 2026-07-03 | Week-1 engine gate | **Passed.** TS engine matches MLX goldens (240 forced steps, 2 cases, atol 2e-3) and runs 332 steps/sec in Node, 2.7x the 125 requirement. ONNX fallback not needed |

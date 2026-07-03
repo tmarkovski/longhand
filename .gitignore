@@ -8,3 +8,5 @@ coverage/
 scratch/
 __pycache__/
 .venv/
+packages/ink-graves/assets/
+packages/ink-graves/test/goldens/

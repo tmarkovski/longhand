@@ -1,0 +1,14 @@
+[project]
+name = "cali-tools"
+version = "0.1.0"
+description = "Build-time tools: weights export and golden test vectors."
+requires-python = ">=3.13"
+dependencies = [
+    "click>=8.1",
+    "numpy>=2.0",
+    "mlx>=0.31",
+    "graves-handwriting-mlx",
+]
+
+[tool.uv.sources]
+graves-handwriting-mlx = { path = "../graves-handwriting-mlx", editable = true }
