@@ -141,7 +141,7 @@ Details that matter:
 | Date | Decision | Call |
 |---|---|---|
 | 2026-07-03 | Repo: brief + plan + MLX submodule (fork) | done |
-| 2026-07-03 | Primary audience | **[OPEN]** |
-| 2026-07-03 | Client-side-only v1 vs API from day one | **[OPEN]** (plan assumes client-side only) |
-| 2026-07-03 | Business model | **[OPEN]** |
-| 2026-07-03 | Name | **[OPEN]** ("Cali" is the working title) |
+| 2026-07-03 | Primary audience | Creators first; developers in Phase 2 (embed package) |
+| 2026-07-03 | v1 backend | Client-side only. Revisit at Phase 3 or at the first of: API product, og-image link previews, saved galleries, long-text share links |
+| 2026-07-03 | Business model | Free for now, no paywall plumbing in the MVP. Pro tier only after we own commercially clean weights |
+| 2026-07-03 | Name | "Cali" stays as working title; brand exploration running separately. Final call before the week-4 deploy |
