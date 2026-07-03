@@ -1,5 +1,5 @@
 {
-  "name": "@cali/ink-graves",
+  "name": "@longhand/ink-graves",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cali/ink-core": "workspace:*"
+    "@longhand/ink-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.0",

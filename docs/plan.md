@@ -14,7 +14,7 @@ A client-side web app: type text, watch a neural pen write it live, export the r
 | 2 | Neural inference | Hand-rolled TS engine in the browser; ONNX Runtime Web as fallback | decided, gate in week 1 |
 | 3 | Live rendering | Canvas 2D, streaming as the model samples | decided |
 | 4 | UI framework | React + Vite + Tailwind; core packages framework-free | decided |
-| 5 | Backend | None. Static hosting (Cloudflare Pages); share links carry full state in the URL | decided |
+| 5 | Backend | None. Static hosting (GitHub Pages, custom domain trylonghand.com); share links carry full state in the URL | decided |
 | 6 | Testing | Golden numeric tests against the MLX reference; Playwright visual regression | decided |
 
 ### 2. Why a hand-rolled TS engine
@@ -38,7 +38,7 @@ Generation is deterministic given (text, style, bias, seed, params). That means 
 ## Architecture
 
 ```
-cali/
+longhand/
 ├── graves-handwriting-mlx/     submodule: reference impl + source of weights
 ├── tools/                      Python (uv): weights export, golden test vectors
 ├── packages/
@@ -124,7 +124,7 @@ Details that matter:
 - **Week 1: foundations.** Monorepo scaffold; `tools/export_weights.py` (MLX safetensors → compact f16 binary); golden test vectors from the submodule; TS engine spike. *Gate: engine matches golden outputs and sustains 125+ steps/sec, else switch to ONNX path.*
 - **Week 2: engine + renderer.** Complete `ink-graves` (13 styles, priming, bias, seed, streaming callback); `ink-render` canvas playback with the pacing model; bare-bones test app.
 - **Week 3: the product.** Full UI (gallery, controls, validation, multi-line); animated SVG + static SVG + PNG + JSON exports; share URLs.
-- **Week 4: ship.** GIF and video export; animated style thumbnails; polish and a11y pass; deploy to Cloudflare Pages; README and landing copy.
+- **Week 4: ship.** GIF and video export; animated style thumbnails; polish and a11y pass; deploy to GitHub Pages (trylonghand.com); README and landing copy.
 
 **Phase 2 (~3 weeks):** tegaki font engine + font gallery; Lottie export; embeddable npm package; paper/nib polish.
 
@@ -146,3 +146,6 @@ Details that matter:
 | 2026-07-03 | Business model | Free for now, no paywall plumbing in the MVP. Pro tier only after we own commercially clean weights |
 | 2026-07-03 | Name | "Cali" stays as working title; brand exploration running separately. Final call before the week-4 deploy |
 | 2026-07-03 | Week-1 engine gate | **Passed.** TS engine matches MLX goldens (240 forced steps, 2 cases, atol 2e-3) and runs 332 steps/sec in Node, 2.7x the 125 requirement. ONNX fallback not needed |
+| 2026-07-03 | Name | **Longhand** (supersedes "Cali stays" above). trylonghand.com registered. Collision sweep done: no USPTO word mark indexed, Product Hunt/Google Play clear; two small coexisting products (Botto Studio iOS app with stroke-replay notes, worth watching; longhand.dev pre-launch LaTeX editor). Before charging: manual USPTO confirm + intent-to-use filing (classes 9/42). "Ductus" reserved as possible stroke-IR format name |
+| 2026-07-03 | Hosting | GitHub Pages via Actions (free for the public repo), custom domain trylonghand.com. npm scope @longhand. Revisit hosting only if Pages limits bite |
+| 2026-07-03 | Share domain | cursive.cool registered (the "cursive is cool" domain hack). Brand stays Longhand; cursive.cool earmarked for share links (`cursive.cool/s/<id>`) and campaign landers |

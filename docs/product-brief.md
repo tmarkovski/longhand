@@ -1,4 +1,4 @@
-# Cali (working title): Product Brief
+# Longhand: Product Brief
 
 *Draft v2, 2026-07-03. For iteration. Items marked **[OPEN]** need a decision.*
 
@@ -147,7 +147,25 @@ pure API/SDK play; one-time purchase. Needs discussion.
 1. Primary audience: creators vs developers first?
 2. Client-side-only v1 or API from day one?
 3. Business model (above).
-4. Name. "Cali" collides with calligrapher.ai mindshare: asset or liability?
+4. **Resolved (2026-07-03): Longhand.** "Cali" dropped (calligrapher.ai clone
+   framing, unwinnable SEO). trylonghand.com registered. Collision sweep
+   (2026-07-03): no LONGHAND word mark in the USPTO aggregator indexes
+   (Justia/TrademarkElite/uspto.report); nothing on Product Hunt or Google
+   Play; npm/GitHub hits are dormant CSS tooling. Two small coexisting
+   products, neither with a surfaced trademark filing: "Longhand" iOS app
+   (Botto Studio, Nov 2025, v1.0, 1 rating; human-drawn notes with stroke
+   replay and browser share links, closest by product feel, worth watching)
+   and longhand.dev (pre-launch waitlist, academic LaTeX editor, different
+   subcategory). Before charging money: 2-minute manual confirm at
+   tmsearch.uspto.gov (blocks scripted access), then file a US intent-to-use
+   application (classes 9/42); EU/WIPO not yet checked. Also still to do:
+   price-check longhand.co; longhand.ink/.com are parked, broker offer later
+   if the brand sticks. Domains owned: trylonghand.com (canonical) and
+   cursive.cool (registered 2026-07-03; earmarked for share links, e.g.
+   `cursive.cool/s/<id>`, and campaign landers; brand stays Longhand).
+   Runner-up "Ductus" (the calligraphy term for stroke
+   order, direction, and speed) reserved as a candidate name for the stroke
+   IR format itself; note ductus.io is registry-premium via Afternic.
 5. How early to invest in own training data (it de-risks licensing and
    enables commercial weights): Phase 1 parallel track or Phase 3?
 6. Mobile capture for own-handwriting: PWA canvas or native app?

@@ -1,9 +1,9 @@
 /**
  * Dev sanity check: generate a few lines with the TS engine and write a
- * static SVG. Run: pnpm --filter @cali/ink-graves exec tsx scripts/render_demo.ts <out.svg>
+ * static SVG. Run: pnpm --filter @longhand/ink-graves exec tsx scripts/render_demo.ts <out.svg>
  */
 import { writeFileSync } from "node:fs";
-import { offsetsToLine, lineBounds, transformLine, type InkLine } from "@cali/ink-core";
+import { offsetsToLine, lineBounds, transformLine, type InkLine } from "@longhand/ink-core";
 import { GravesModel } from "../src/engine.js";
 import { loadAssets } from "../test/helpers.js";
 

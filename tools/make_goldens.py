@@ -87,7 +87,10 @@ def run_case(cell: HandwritingCell, name: str, chars_text: str, bias: float, for
     show_default=True,
 )
 @click.option("--steps", "num_steps", default=120, show_default=True)
-def main(out_dir: Path, num_steps: int) -> None:
+@click.option("--cpu", is_flag=True, help="Force the MLX CPU device (for CI runners without Metal).")
+def main(out_dir: Path, num_steps: int, cpu: bool) -> None:
+    if cpu:
+        mx.set_default_device(mx.cpu)
     cell = HandwritingCell(load_weights())
     out_dir.mkdir(parents=True, exist_ok=True)
 

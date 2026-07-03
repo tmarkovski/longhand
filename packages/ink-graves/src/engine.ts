@@ -4,7 +4,7 @@
  * sampling with bias sharpening, and attention-based termination.
  */
 
-import type { StrokeOffset } from "@cali/ink-core";
+import type { StrokeOffset } from "@longhand/ink-core";
 import { Cell, MAX_CHARS } from "./cell.js";
 import type { CellState, MdnParams } from "./cell.js";
 import { Rng } from "./rng.js";

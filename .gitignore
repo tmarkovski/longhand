@@ -10,3 +10,4 @@ __pycache__/
 .venv/
 packages/ink-graves/assets/
 packages/ink-graves/test/goldens/
+apps/web/public/model/

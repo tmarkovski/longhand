@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { offsetsToLine } from "@cali/ink-core";
+import { offsetsToLine } from "@longhand/ink-core";
 import { GravesModel } from "../src/engine.js";
 import { loadAssets } from "./helpers.js";
 
