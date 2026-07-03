@@ -188,12 +188,53 @@ header h1 {
   }
 }
 
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  align-items: center;
+}
+
 .slider {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
   color: #6f6a5e;
+}
+
+.palette {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid rgba(28, 28, 40, 0.18);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.swatch.selected {
+  box-shadow:
+    0 0 0 2px #f3efe7,
+    0 0 0 4px #1c1c28;
+}
+
+/* "no color": paper with a slash, the default-ink / inherit option. */
+.swatch-none {
+  background:
+    linear-gradient(
+      135deg,
+      transparent 44%,
+      #b3261e 44%,
+      #b3261e 56%,
+      transparent 56%
+    )
+    #fffdf8;
 }
 
 .note {

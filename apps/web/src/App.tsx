@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
-import { penWidths, polishLine, ribbonPath } from "@longhand/ink-render";
+import { penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
 import StylePicker, { styleOptions } from "./StylePicker.js";
 import type { EngineDescriptor, EngineId, WorkerEvent, WriteRequest } from "./protocol.js";
 
@@ -12,6 +12,22 @@ const BASE_WIDTH = 2.2;
 // so ribbon layout allows the reference site's larger cap (11 at its
 // 1240px design width) instead of the pen renderer's 1.6.
 const RIBBON_MAX_SCALE_PER_PX = 11 / 1240;
+
+// The page's ink color (matches the CSS text color). "no color" paints with
+// this, and an SVG export would omit fill/stroke entirely so the paths
+// inherit from wherever they're embedded.
+const DEFAULT_INK = "#1c1c28";
+
+/** Ink palette; value null is "no color" (default ink / inherit). */
+const INK_COLORS: ReadonlyArray<{ name: string; value: string | null }> = [
+  { name: "no color", value: null },
+  { name: "blue", value: "#1e4fd8" },
+  { name: "teal", value: "#0e7490" },
+  { name: "green", value: "#2f6b3a" },
+  { name: "red", value: "#b3261e" },
+  { name: "sepia", value: "#7a4a21" },
+  { name: "violet", value: "#6d28d9" },
+];
 
 type Status = "loading" | "ready" | "warming" | "thinking" | "writing" | "error";
 
@@ -43,6 +59,12 @@ export default function App() {
   const rafRef = useRef(0);
   const alphabetRef = useRef<Set<string>>(new Set());
   const rendererRef = useRef<"pen" | "ribbon">("pen");
+  // Paint-time copy of the ink settings, so the rAF loop sees changes
+  // without re-subscribing.
+  const inkRef = useRef<{ color: string | null; thickness: number }>({
+    color: null,
+    thickness: 1,
+  });
 
   const [status, setStatus] = useState<Status>("loading");
   const [note, setNote] = useState("loading the model (15 MB, one time)…");
@@ -52,6 +74,8 @@ export default function App() {
   const [engine, setEngine] = useState<EngineId>("graves");
   const [descriptor, setDescriptor] = useState<EngineDescriptor | null>(null);
   const [seed, setSeed] = useState(42);
+  const [color, setColor] = useState<string | null>(null);
+  const [thickness, setThickness] = useState(1);
 
   useEffect(() => {
     const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
@@ -105,6 +129,29 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Ink settings restyle the finished line in place: re-lay it out with the
+  // new width and repaint immediately (or, mid-animation, let the running
+  // loop repaint from scratch at its current pace).
+  useEffect(() => {
+    inkRef.current = { color, thickness };
+    ribbonPathsRef.current = ribbonPathsRef.current.map(() => null);
+    if ((status !== "ready" && status !== "writing") || offsetsRef.current.length === 0) return;
+    layout(offsetsRef.current);
+    clearCanvas();
+    penRef.current.drawn = 0;
+    if (status !== "ready") return;
+    const canvas = canvasRef.current;
+    const total =
+      rendererRef.current === "ribbon"
+        ? (ribbonRef.current?.totalPoints ?? 0)
+        : stepsRef.current.length;
+    if (!canvas || total === 0) return;
+    const context = canvas.getContext("2d")!;
+    if (rendererRef.current === "ribbon") paintRibbon(context, total);
+    else paintPen(context, total);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [color, thickness]);
+
   function clearCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -115,8 +162,6 @@ export default function App() {
     context.scale(dpr, dpr);
     context.lineCap = "round";
     context.lineJoin = "round";
-    context.strokeStyle = "#1c1c28";
-    context.fillStyle = "#1c1c28";
   }
 
   /** Fit a line to the canvas; returns the placed line and its scale. */
@@ -162,7 +207,7 @@ export default function App() {
 
     // The pen look: smooth, level the baseline, then speed-based widths.
     const { placed } = fitToCanvas(polishLine(offsetsToLine(offsets)), MAX_SCALE);
-    const widths = penWidths(placed, { base: BASE_WIDTH });
+    const widths = penWidths(placed, { base: BASE_WIDTH * inkRef.current.thickness });
     stepsRef.current = placed.strokes.flatMap((stroke, strokeIndex) =>
       stroke.points.map(([x, y], pointIndex) => ({
         x,
@@ -176,6 +221,9 @@ export default function App() {
   function paintPen(context: CanvasRenderingContext2D, limit: number) {
     const steps = stepsRef.current;
     const pen = penRef.current;
+    const ink = inkRef.current.color ?? DEFAULT_INK;
+    context.strokeStyle = ink;
+    context.fillStyle = ink;
     while (pen.drawn < limit) {
       const step = steps[pen.drawn]!;
       const previous = pen.drawn > 0 ? steps[pen.drawn - 1]! : null;
@@ -202,6 +250,7 @@ export default function App() {
     const line = ribbonRef.current;
     if (!line) return;
     context.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    context.fillStyle = inkRef.current.color ?? DEFAULT_INK;
     let remaining = limit;
     for (let index = 0; index < line.strokes.length && remaining > 0; index++) {
       const points = line.strokes[index]!;
@@ -210,7 +259,7 @@ export default function App() {
       if (take < 2) continue; // the reference leaves single points blank
       let path = take === points.length ? ribbonPathsRef.current[index] : null;
       if (!path) {
-        const d = ribbonPath(points.slice(0, take), line.scale);
+        const d = ribbonPath(points.slice(0, take), line.scale, RIBBON_WIDTH * inkRef.current.thickness);
         if (!d) continue;
         path = new Path2D(d);
         if (take === points.length) ribbonPathsRef.current[index] = path;
@@ -245,6 +294,9 @@ export default function App() {
     if (next === engine) return;
     setEngine(next);
     setStyle(null);
+    // The old line can't be re-laid-out by the new renderer, so stop the
+    // settings effect from trying.
+    offsetsRef.current = [];
     setStatus("loading");
     setNote("");
     workerRef.current?.postMessage({ type: "engine", engine: next });
@@ -306,6 +358,15 @@ export default function App() {
           <option value="calligrapher">calligrapher engine</option>
         </select>
         <StylePicker options={styleOptions(descriptor)} value={style} onChange={setStyle} />
+        <button onClick={() => write()} disabled={busy}>
+          write
+        </button>
+        <button onClick={shuffle} disabled={busy} title="new seed, same everything else">
+          shuffle
+        </button>
+      </div>
+
+      <div className="settings">
         <label className="slider">
           legibility
           <input
@@ -317,12 +378,36 @@ export default function App() {
             onChange={(event) => setBias(Number(event.target.value))}
           />
         </label>
-        <button onClick={() => write()} disabled={busy}>
-          write
-        </button>
-        <button onClick={shuffle} disabled={busy} title="new seed, same everything else">
-          shuffle
-        </button>
+        <label className="slider">
+          thickness
+          <input
+            type="range"
+            min={0.3}
+            max={2.0}
+            step={0.05}
+            value={thickness}
+            onChange={(event) => setThickness(Number(event.target.value))}
+          />
+        </label>
+        <div className="palette" role="radiogroup" aria-label="ink color">
+          {INK_COLORS.map((swatch) => (
+            <button
+              key={swatch.name}
+              type="button"
+              role="radio"
+              aria-checked={swatch.value === color}
+              aria-label={`ink color: ${swatch.name}`}
+              title={swatch.name}
+              className={
+                "swatch" +
+                (swatch.value === null ? " swatch-none" : "") +
+                (swatch.value === color ? " selected" : "")
+              }
+              style={swatch.value ? { background: swatch.value } : undefined}
+              onClick={() => setColor(swatch.value)}
+            />
+          ))}
+        </div>
       </div>
 
       <p className={`note ${status === "error" ? "error" : ""}`}>

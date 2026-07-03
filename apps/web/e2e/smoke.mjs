@@ -78,6 +78,14 @@ await writeButton.click();
 await page.waitForTimeout(12_000);
 const calligrapherInk = await inkPixels();
 
+// Ink settings restyle the finished line without a rewrite: pick blue
+// (red channel low, so inkPixels still counts it) and max thickness, then
+// confirm the repaint kept — and fattened — the ink.
+await page.getByRole("radio", { name: "ink color: blue" }).click();
+await page.getByLabel("thickness").press("End");
+await page.waitForTimeout(1_000);
+const restyledInk = await inkPixels();
+
 // And back: the graves engine is cached, so this is instant.
 await page.selectOption(".engine-select", "graves");
 await waitForIdle();
@@ -88,12 +96,17 @@ await browser.close();
 console.log(`freehand ink pixels:     ${freehandInk}`);
 console.log(`styled ink pixels:       ${styledInk}`);
 console.log(`calligrapher ink pixels: ${calligrapherInk}`);
+console.log(`restyled ink pixels:     ${restyledInk}`);
 if (errors.length > 0) {
   console.error("console errors:", errors);
   process.exit(1);
 }
 if (freehandInk < 1000 || styledInk < 1000 || calligrapherInk < 1000) {
   console.error("canvas looks empty — expected at least 1000 ink pixels");
+  process.exit(1);
+}
+if (restyledInk <= calligrapherInk) {
+  console.error("thickness change did not fatten the ink");
   process.exit(1);
 }
 console.log("smoke test passed");
