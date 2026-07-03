@@ -16,6 +16,9 @@ importers:
       '@longhand/ink-graves':
         specifier: workspace:*
         version: link:../../packages/ink-graves
+      '@longhand/ink-render':
+        specifier: workspace:*
+        version: link:../../packages/ink-render
       react:
         specifier: ^19.2.4
         version: 19.2.7
@@ -66,6 +69,22 @@ importers:
       tsx:
         specifier: ^4.22.5
         version: 4.22.5
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/node@26.1.0)(tsx@4.22.5)
+
+  packages/ink-render:
+    dependencies:
+      '@longhand/ink-core':
+        specifier: workspace:*
+        version: link:../ink-core
+    devDependencies:
+      '@types/node':
+        specifier: ^26.1.0
+        version: 26.1.0
       typescript:
         specifier: ^5.9.3
         version: 5.9.3

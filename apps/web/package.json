@@ -13,6 +13,7 @@
   "dependencies": {
     "@longhand/ink-core": "workspace:*",
     "@longhand/ink-graves": "workspace:*",
+    "@longhand/ink-render": "workspace:*",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

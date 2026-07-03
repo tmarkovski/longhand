@@ -41,15 +41,16 @@ await page.waitForFunction(
   { timeout: 90_000 },
 );
 
-// Freehand write.
+// Freehand write. Generation now completes before the pen animates, so the
+// wait covers a full generate + partial replay.
 await writeButton.click();
-await page.waitForTimeout(4_000);
+await page.waitForTimeout(10_000);
 const freehandInk = await inkPixels();
 
 // Styled write (exercises priming in the worker).
 await page.selectOption("select", "3");
 await writeButton.click();
-await page.waitForTimeout(12_000);
+await page.waitForTimeout(18_000);
 const styledInk = await inkPixels();
 
 await page.screenshot({ path: screenshotPath, fullPage: true });

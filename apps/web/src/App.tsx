@@ -1,18 +1,30 @@
 import { useEffect, useRef, useState } from "react";
+import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
+import { penWidths, polishLine } from "@longhand/ink-render";
 import type { WorkerEvent, WriteRequest } from "./protocol.js";
 
 const DT_MS = 8; // one model timestep of pen time
-const SCALE = 1.6;
-const PEN_START: [number, number] = [32, 150];
+const MAX_SCALE = 1.6;
+const MARGIN_X = 32;
+const BASE_WIDTH = 2.2;
 
-type Status = "loading" | "ready" | "warming" | "writing" | "error";
+type Status = "loading" | "ready" | "warming" | "thinking" | "writing" | "error";
+
+/** One animation step: a polished point with its ink width. A stroke-index
+ * change between consecutive steps means the pen lifted in between. */
+interface PenStep {
+  x: number;
+  y: number;
+  width: number;
+  stroke: number;
+}
 
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const workerRef = useRef<Worker | null>(null);
-  const queueRef = useRef<Array<[number, number, number]>>([]);
-  const penRef = useRef({ x: 0, y: 0, lifted: true, drawn: 0, startedAt: 0 });
-  const doneRef = useRef(false);
+  const offsetsRef = useRef<Array<[number, number, number]>>([]);
+  const stepsRef = useRef<PenStep[]>([]);
+  const penRef = useRef({ drawn: 0, startedAt: 0 });
   const rafRef = useRef(0);
   const alphabetRef = useRef<Set<string>>(new Set());
 
@@ -40,28 +52,25 @@ export default function App() {
           setStatus("warming");
           setNote(message.message);
           break;
-        case "start": {
-          queueRef.current = [];
-          doneRef.current = false;
-          penRef.current = {
-            x: PEN_START[0],
-            y: PEN_START[1],
-            lifted: true,
-            drawn: 0,
-            startedAt: performance.now(),
-          };
-          clearCanvas();
-          setStatus("writing");
-          setNote("");
+        case "start":
+          offsetsRef.current = [];
+          stepsRef.current = [];
           cancelAnimationFrame(rafRef.current);
-          rafRef.current = requestAnimationFrame(tick);
+          clearCanvas();
+          setStatus("thinking");
+          setNote("");
           break;
-        }
         case "offsets":
-          queueRef.current.push(...message.batch);
+          offsetsRef.current.push(...message.batch);
           break;
         case "done":
-          doneRef.current = true;
+          // The line is complete: smooth it, level its baseline, lay it out,
+          // and only then let the pen replay it at writing pace.
+          stepsRef.current = layoutSteps(offsetsRef.current);
+          penRef.current = { drawn: 0, startedAt: performance.now() };
+          setStatus("writing");
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = requestAnimationFrame(tick);
           break;
         case "error":
           setStatus("error");
@@ -84,37 +93,68 @@ export default function App() {
     canvas.height = canvas.clientHeight * dpr;
     const context = canvas.getContext("2d")!;
     context.scale(dpr, dpr);
-    context.lineWidth = 2.1;
     context.lineCap = "round";
     context.lineJoin = "round";
     context.strokeStyle = "#1c1c28";
+    context.fillStyle = "#1c1c28";
+  }
+
+  /** Polish the raw offsets and fit the result to the canvas. */
+  function layoutSteps(offsets: Array<[number, number, number]>): PenStep[] {
+    const canvas = canvasRef.current;
+    if (!canvas || offsets.length === 0) return [];
+    const line = polishLine(offsetsToLine(offsets));
+    const bounds = lineBounds(line);
+    const inkWidth = Math.max(bounds.maxX - bounds.minX, 1);
+    const inkHeight = Math.max(bounds.maxY - bounds.minY, 1);
+    const scale = Math.min(
+      MAX_SCALE,
+      (canvas.clientWidth - 2 * MARGIN_X) / inkWidth,
+      (canvas.clientHeight - 24) / inkHeight,
+    );
+    const placed = transformLine(line, {
+      scale,
+      translateX: MARGIN_X - bounds.minX * scale,
+      translateY: canvas.clientHeight / 2 - (bounds.minY + inkHeight / 2) * scale,
+    });
+    const widths = penWidths(placed, { base: BASE_WIDTH });
+    return placed.strokes.flatMap((stroke, strokeIndex) =>
+      stroke.points.map(([x, y], pointIndex) => ({
+        x,
+        y,
+        width: widths[strokeIndex]![pointIndex]!,
+        stroke: strokeIndex,
+      })),
+    );
   }
 
   function tick() {
     const canvas = canvasRef.current;
+    const steps = stepsRef.current;
     const pen = penRef.current;
-    const queue = queueRef.current;
-    if (canvas) {
+    if (canvas && steps.length > 0) {
       const context = canvas.getContext("2d")!;
       const targetSteps = Math.floor((performance.now() - pen.startedAt) / DT_MS);
-      const limit = Math.min(targetSteps, queue.length);
+      const limit = Math.min(targetSteps, steps.length);
       while (pen.drawn < limit) {
-        const [dx, dy, eos] = queue[pen.drawn];
-        const nextX = pen.x + dx * SCALE;
-        const nextY = pen.y - dy * SCALE;
-        if (!pen.lifted) {
+        const step = steps[pen.drawn]!;
+        const previous = pen.drawn > 0 ? steps[pen.drawn - 1]! : null;
+        if (previous && previous.stroke === step.stroke) {
+          context.lineWidth = (previous.width + step.width) / 2;
           context.beginPath();
-          context.moveTo(pen.x, pen.y);
-          context.lineTo(nextX, nextY);
+          context.moveTo(previous.x, previous.y);
+          context.lineTo(step.x, step.y);
           context.stroke();
+        } else {
+          // Pen touchdown: a dot, so single-point strokes still leave ink.
+          context.beginPath();
+          context.arc(step.x, step.y, step.width / 2, 0, Math.PI * 2);
+          context.fill();
         }
-        pen.x = nextX;
-        pen.y = nextY;
-        pen.lifted = eos === 1;
         pen.drawn++;
       }
     }
-    if (doneRef.current && pen.drawn >= queueRef.current.length) {
+    if (pen.drawn >= steps.length) {
       setStatus("ready");
       return;
     }
@@ -176,8 +216,8 @@ export default function App() {
           legibility
           <input
             type="range"
-            min={0.1}
-            max={1.5}
+            min={0.15}
+            max={1.0}
             step={0.05}
             value={bias}
             onChange={(event) => setBias(Number(event.target.value))}
@@ -192,7 +232,8 @@ export default function App() {
       </div>
 
       <p className={`note ${status === "error" ? "error" : ""}`}>
-        {note || (status === "writing" ? "writing…" : " ")}
+        {note ||
+          (status === "thinking" ? "thinking…" : status === "writing" ? "writing…" : " ")}
       </p>
 
       <footer>

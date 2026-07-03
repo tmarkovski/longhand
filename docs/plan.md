@@ -12,7 +12,7 @@ A client-side web app: type text, watch a neural pen write it live, export the r
 |---|---|---|---|
 | 1 | Language / repo shape | TypeScript monorepo (pnpm workspaces); Python (uv) only in `tools/` | decided |
 | 2 | Neural inference | Hand-rolled TS engine in the browser; ONNX Runtime Web as fallback | decided, gate in week 1 |
-| 3 | Live rendering | Canvas 2D, streaming as the model samples | decided |
+| 3 | Live rendering | Canvas 2D; worker streams strokes, pen replays the polished line (smooth + align + ink widths) | decided, revised 2026-07-03 |
 | 4 | UI framework | React + Vite + Tailwind; core packages framework-free | decided |
 | 5 | Backend | None. Static hosting (GitHub Pages, custom domain trylonghand.com); share links carry full state in the URL | decided |
 | 6 | Testing | Golden numeric tests against the MLX reference; Playwright visual regression | decided |
@@ -149,3 +149,5 @@ Details that matter:
 | 2026-07-03 | Name | **Longhand** (supersedes "Cali stays" above). trylonghand.com registered. Collision sweep done: no USPTO word mark indexed, Product Hunt/Google Play clear; two small coexisting products (Botto Studio iOS app with stroke-replay notes, worth watching; longhand.dev pre-launch LaTeX editor). Before charging: manual USPTO confirm + intent-to-use filing (classes 9/42). "Ductus" reserved as possible stroke-IR format name |
 | 2026-07-03 | Hosting | GitHub Pages via Actions (free for the public repo), custom domain trylonghand.com. npm scope @longhand. Revisit hosting only if Pages limits bite |
 | 2026-07-03 | Share domain | cursive.cool registered (the "cursive is cool" domain hack). Brand stays Longhand; cursive.cool earmarked for share links (`cursive.cool/s/<id>`) and campaign landers |
+| 2026-07-03 | Legibility cap | Slider capped at bias 1.0. Above ~1.0 the sampler goes near-deterministic and the hidden state falls into a cramped-scribble attractor (stochastic, seed- and length-dependent; reproduced identically in the MLX reference, so a weights property, not a port bug). calligrapher.ai runs clean at bias 2.5 on an unreleased checkpoint, confirming better weights raise the ceiling; ours moves with the Phase 3 training run |
+| 2026-07-03 | ink-render v1 | New `@longhand/ink-render`: Savitzky-Golay smoothing + least-squares baseline alignment (ports of the reference `_denoise`/`_align`, golden-tested vs scipy/numpy) + speed-based pen widths. Canvas flow changed from draw-while-sampling to generate-then-replay, since alignment needs the whole line; a "thinking…" phase (~2-3 s) precedes the pen. Matches the calligrapher.ai polish recipe (Bézier ribbons there, per-segment widths here) |
