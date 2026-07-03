@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { InkLine } from "@longhand/ink-core";
-import { alignLine, penWidths, polishLine, smoothLine } from "../src/index.js";
+import { alignLine, lineToSvg, penWidths, polishLine, smoothLine } from "../src/index.js";
 
 interface Golden {
   savgol: Array<{ input: number[]; expected: number[] }>;
@@ -108,5 +108,35 @@ describe("polishLine", () => {
     const polished = polishLine(lineOf(points)).strokes[0]!.points;
     const ys = polished.map(([, y]) => y);
     expect(Math.max(...ys) - Math.min(...ys)).toBeLessThan(4);
+  });
+});
+
+describe("lineToSvg", () => {
+  // A wavy stroke plus a single-point stroke (a pen tap).
+  const points: Array<[number, number]> = [];
+  for (let i = 0; i < 12; i++) points.push([i * 2, (i % 3) - 1]);
+  const line: InkLine = { strokes: [{ points }, { points: [[30, 0]] }] };
+
+  it("crops the viewBox to the ink plus padding", () => {
+    const svg = lineToSvg(line, { renderer: "pen", scale: 2, padding: 5 });
+    // Ink spans x 0..30, y -1..1 → 30·2 + 2·5 by 2·2 + 2·5.
+    expect(svg).toContain('viewBox="0 0 70.0 14.0"');
+  });
+
+  it("pen: stroked runs with quantized widths and a touchdown dot per stroke", () => {
+    const svg = lineToSvg(line, { renderer: "pen", scale: 2, pen: { base: 2 } });
+    expect(svg).toContain('fill="none" stroke="currentColor"');
+    expect((svg.match(/<circle /g) ?? []).length).toBe(2);
+    const runWidths = [...svg.matchAll(/stroke-width="([\d.]+)"/g)].map(([, w]) => Number(w));
+    expect(runWidths.length).toBeGreaterThan(0);
+    // Every run width sits on the 0.2 quantization grid.
+    for (const w of runWidths) expect((w * 10) % 2).toBeCloseTo(0, 6);
+  });
+
+  it("ribbon: one filled outline per stroke, single points skipped", () => {
+    const svg = lineToSvg(line, { renderer: "ribbon", scale: 2 });
+    expect(svg).toContain('fill="currentColor" stroke="none"');
+    expect((svg.match(/<path /g) ?? []).length).toBe(1);
+    expect(svg).not.toContain("stroke-width");
   });
 });

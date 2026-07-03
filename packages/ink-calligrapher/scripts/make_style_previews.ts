@@ -2,16 +2,16 @@
  * Static SVG previews for the app's style dropdown: the app's default
  * phrase written once per calligrapher style, generated with the same
  * engine and ribbon rendering the app uses, so a preview is
- * pixel-for-pixel the hand the user will get. Tightly cropped,
- * transparent background, `currentColor` ink so the consuming CSS picks
- * the color.
+ * pixel-for-pixel the hand the user will get. Serialization is the shared
+ * `lineToSvg` ribbon renderer: tightly cropped, transparent background,
+ * `currentColor` ink.
  *
  * Run: pnpm --filter @longhand/ink-calligrapher exec tsx scripts/make_style_previews.ts [outDir]
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { lineBounds, offsetsToLine, transformLine, type InkLine } from "@longhand/ink-core";
-import { ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
+import { offsetsToLine } from "@longhand/ink-core";
+import { lineToSvg } from "@longhand/ink-render";
 import { CalligrapherModel, EXPOSED_STYLES, STEPS_PER_CHARACTER } from "../src/engine.js";
 import { parseCalligrapherWeights } from "../src/weights.js";
 
@@ -21,7 +21,6 @@ const TEXT = "a line of ink, thinking as it goes";
 const BIAS = 1.0;
 const SEED = 42;
 const SCALE = 1.6; // App.tsx MAX_SCALE
-const PADDING = 6;
 
 const outDir =
   process.argv[2] ??
@@ -32,30 +31,6 @@ function loadModel(): CalligrapherModel {
   const bytes = readFileSync(path);
   const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
   return new CalligrapherModel(parseCalligrapherWeights(buffer));
-}
-
-function renderPreview(line: InkLine): string {
-  const bounds = lineBounds(line);
-  const placed = transformLine(line, {
-    scale: SCALE,
-    translateX: PADDING - bounds.minX * SCALE,
-    translateY: PADDING - bounds.minY * SCALE,
-  });
-  const width = (bounds.maxX - bounds.minX) * SCALE + 2 * PADDING;
-  const height = (bounds.maxY - bounds.minY) * SCALE + 2 * PADDING;
-
-  const parts: string[] = [];
-  for (const stroke of placed.strokes) {
-    const d = ribbonPath(stroke.points, SCALE, RIBBON_WIDTH);
-    if (d) parts.push(`<path d="${d}"/>`);
-  }
-
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width.toFixed(1)} ${height.toFixed(1)}" ` +
-    `fill="currentColor" stroke="none" role="img">\n` +
-    parts.join("\n") +
-    "\n</svg>\n"
-  );
 }
 
 const model = loadModel();
@@ -76,7 +51,7 @@ for (const style of EXPOSED_STYLES) {
     console.log(`  style ${style}: collapsed at seed ${seed - 1}, retrying with seed ${seed}`);
     offsets = model.write(TEXT, { bias: BIAS, style, seed });
   }
-  const svg = renderPreview(offsetsToLine(offsets));
+  const svg = lineToSvg(offsetsToLine(offsets), { renderer: "ribbon", scale: SCALE });
   const file = `${outDir}/style-${style}.svg`;
   writeFileSync(file, svg);
   console.log(
