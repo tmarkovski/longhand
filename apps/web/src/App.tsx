@@ -60,7 +60,11 @@ export default function App() {
   const stepsRef = useRef<PenStep[]>([]);
   const ribbonRef = useRef<RibbonLayout | null>(null);
   const ribbonPathsRef = useRef<Array<Path2D | null>>([]);
-  const penRef = useRef({ drawn: 0, startedAt: 0 });
+  // `progress` is the replay clock in fractional steps; accumulating it per
+  // frame (instead of measuring from a start time) lets the speed setting
+  // change mid-write without the pen jumping.
+  const penRef = useRef({ drawn: 0, progress: 0, lastTick: 0 });
+  const speedRef = useRef(1);
   const rafRef = useRef(0);
   const alphabetRef = useRef<Set<string>>(new Set());
   const rendererRef = useRef<RendererKind>("pen");
@@ -81,8 +85,11 @@ export default function App() {
   const [descriptor, setDescriptor] = useState<EngineDescriptor | null>(null);
   const [seed, setSeed] = useState(42);
   const [color, setColor] = useState<string | null>(null);
+  const [customColor, setCustomColor] = useState(DEFAULT_INK);
   const [thickness, setThickness] = useState(1);
+  const [speed, setSpeed] = useState(1);
   const [stroke, setStroke] = useState<RendererKind>("pen");
+  const [optionsOpen, setOptionsOpen] = useState(false);
 
   useEffect(() => {
     const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
@@ -122,7 +129,7 @@ export default function App() {
           // The line is complete: lay it out for the active renderer and
           // only then let the pen replay it at writing pace.
           layout(offsetsRef.current);
-          penRef.current = { drawn: 0, startedAt: performance.now() };
+          penRef.current = { drawn: 0, progress: 0, lastTick: performance.now() };
           setStatus("writing");
           cancelAnimationFrame(rafRef.current);
           rafRef.current = requestAnimationFrame(tick);
@@ -147,6 +154,22 @@ export default function App() {
   useEffect(() => {
     rendererRef.current = stroke;
     inkRef.current = { color, thickness };
+    refit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [color, thickness, stroke]);
+
+  // The canvas is sized by CSS, so rotation or a window resize changes it
+  // under a bitmap laid out for the old size; re-fit the line when that
+  // happens. Re-registered per status so refit sees the current one.
+  useEffect(() => {
+    window.addEventListener("resize", refit);
+    return () => window.removeEventListener("resize", refit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  /** Re-lay-out the finished line for the current canvas size and settings,
+   * then repaint (or, mid-animation, let the running loop repaint). */
+  function refit() {
     ribbonPathsRef.current = ribbonPathsRef.current.map(() => null);
     if ((status !== "ready" && status !== "writing") || offsetsRef.current.length === 0) return;
     layout(offsetsRef.current);
@@ -162,8 +185,7 @@ export default function App() {
     const context = canvas.getContext("2d")!;
     if (rendererRef.current === "ribbon") paintRibbon(context, total);
     else paintPen(context, total);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [color, thickness, stroke]);
+  }
 
   function clearCanvas() {
     const canvas = canvasRef.current;
@@ -311,10 +333,12 @@ export default function App() {
       rendererRef.current === "ribbon"
         ? (ribbonRef.current?.totalPoints ?? 0)
         : stepsRef.current.length;
+    const now = performance.now();
+    pen.progress += ((now - pen.lastTick) / DT_MS) * speedRef.current;
+    pen.lastTick = now;
     if (canvas && total > 0) {
       const context = canvas.getContext("2d")!;
-      const targetSteps = Math.floor((performance.now() - pen.startedAt) / DT_MS);
-      const limit = Math.min(targetSteps, total);
+      const limit = Math.min(Math.floor(pen.progress), total);
       if (rendererRef.current === "ribbon") paintRibbon(context, limit);
       else paintPen(context, limit);
     }
@@ -337,7 +361,10 @@ export default function App() {
     workerRef.current?.postMessage({ type: "engine", engine: next });
   }
 
-  function write(nextSeed: number = seed) {
+  /** Generate and write the line. Every write draws a fresh seed (write and
+   * shuffle used to be separate buttons); the seed lands in state so a share
+   * link can reproduce the exact take. */
+  function write() {
     const supported = alphabetRef.current;
     const cleaned = [...text].filter((c) => supported.has(c)).join("");
     if (cleaned !== text) {
@@ -345,6 +372,8 @@ export default function App() {
       setNote("dropped characters this engine can't write");
     }
     if (cleaned.trim().length === 0) return;
+    const nextSeed = Math.floor(Math.random() * 1_000_000);
+    setSeed(nextSeed);
     const request: WriteRequest = {
       type: "write",
       engine,
@@ -356,13 +385,20 @@ export default function App() {
     workerRef.current?.postMessage(request);
   }
 
-  function shuffle() {
-    const nextSeed = Math.floor(Math.random() * 1_000_000);
-    setSeed(nextSeed);
-    write(nextSeed);
+  /** Rewind the finished line and let the pen write it again. */
+  function replay() {
+    if (offsetsRef.current.length === 0) return;
+    clearCanvas();
+    penRef.current = { drawn: 0, progress: 0, lastTick: performance.now() };
+    setStatus("writing");
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(tick);
   }
 
   const busy = status === "loading" || status === "warming";
+  const options = styleOptions(descriptor);
+  const styleLabel = options.find((option) => option.id === style)?.label ?? "style";
+  const fmt = (value: number) => String(Number(value.toFixed(2)));
 
   return (
     <main className="page">
@@ -371,7 +407,20 @@ export default function App() {
         <p className="tagline">handwriting, alive. every stroke generated in your browser</p>
       </header>
 
-      <canvas ref={canvasRef} className="paper" />
+      <div className="paper-wrap">
+        <canvas ref={canvasRef} className="paper" />
+        {(status === "ready" || status === "writing") && offsetsRef.current.length > 0 && (
+          <button
+            type="button"
+            className="replay"
+            title="replay"
+            aria-label="replay"
+            onClick={replay}
+          >
+            ↻
+          </button>
+        )}
+      </div>
 
       <div className="controls">
         <input
@@ -382,82 +431,131 @@ export default function App() {
           onKeyDown={(event) => event.key === "Enter" && !busy && write()}
           placeholder="type something to write…"
         />
-        <select
-          className="engine-select"
-          value={engine}
-          onChange={(event) => switchEngine(event.target.value as EngineId)}
-          title="handwriting engine"
-          aria-label="handwriting engine"
-        >
-          <option value="graves">longhand engine</option>
-          <option value="calligrapher">calligrapher engine</option>
-        </select>
-        <StylePicker options={styleOptions(descriptor)} value={style} onChange={setStyle} />
-        <button onClick={() => write()} disabled={busy}>
+        <button onClick={write} disabled={busy} title="every write is a new take">
           write
-        </button>
-        <button onClick={shuffle} disabled={busy} title="new seed, same everything else">
-          shuffle
         </button>
       </div>
 
-      <div className="settings">
-        <label className="slider">
-          legibility
-          <input
-            type="range"
-            min={0.15}
-            max={1.0}
-            step={0.05}
-            value={bias}
-            onChange={(event) => setBias(Number(event.target.value))}
-          />
-        </label>
-        <label className="slider">
-          thickness
-          <input
-            type="range"
-            min={0.3}
-            max={2.0}
-            step={0.05}
-            value={thickness}
-            onChange={(event) => setThickness(Number(event.target.value))}
-          />
-        </label>
-        <div className="stroke-toggle" role="radiogroup" aria-label="stroke type">
-          {(["pen", "ribbon"] as const).map((kind) => (
-            <button
-              key={kind}
-              type="button"
-              role="radio"
-              aria-checked={stroke === kind}
-              className={"stroke-option" + (stroke === kind ? " selected" : "")}
-              onClick={() => setStroke(kind)}
-            >
-              {kind}
-            </button>
-          ))}
-        </div>
-        <div className="palette" role="radiogroup" aria-label="ink color">
-          {INK_COLORS.map((swatch) => (
-            <button
-              key={swatch.name}
-              type="button"
-              role="radio"
-              aria-checked={swatch.value === color}
-              aria-label={`ink color: ${swatch.name}`}
-              title={swatch.name}
-              className={
-                "swatch" +
-                (swatch.value === null ? " swatch-none" : "") +
-                (swatch.value === color ? " selected" : "")
-              }
-              style={swatch.value ? { background: swatch.value } : undefined}
-              onClick={() => setColor(swatch.value)}
-            />
-          ))}
-        </div>
-      </div>
+      <section className="options">
+        <button
+          type="button"
+          className="options-toggle"
+          aria-expanded={optionsOpen}
+          aria-controls="options-panel"
+          onClick={() => setOptionsOpen((open) => !open)}
+        >
+          <span className="options-title">options</span>
+          <span className="options-summary">
+            {descriptor?.label ?? "loading…"} · {styleLabel} · {stroke} ·{" "}
+            <span className="ink-dot" style={{ background: color ?? DEFAULT_INK }} aria-hidden />{" "}
+            · legibility {fmt(bias)} · thickness {fmt(thickness)}× · speed {fmt(speed)}×
+          </span>
+          <span className="options-caret" aria-hidden>
+            {optionsOpen ? "▴" : "▾"}
+          </span>
+        </button>
+        {optionsOpen && (
+          <div className="options-panel" id="options-panel">
+            <div className="options-row">
+              <select
+                className="engine-select"
+                value={engine}
+                onChange={(event) => switchEngine(event.target.value as EngineId)}
+                title="handwriting engine"
+                aria-label="handwriting engine"
+              >
+                <option value="graves">longhand engine</option>
+                <option value="calligrapher">calligrapher engine</option>
+              </select>
+              <StylePicker options={options} value={style} onChange={setStyle} />
+            </div>
+            <div className="settings">
+              <label className="slider">
+                <span className="slider-name">legibility</span>
+                <input
+                  type="range"
+                  min={0.15}
+                  max={1.0}
+                  step={0.05}
+                  value={bias}
+                  onChange={(event) => setBias(Number(event.target.value))}
+                />
+              </label>
+              <label className="slider">
+                <span className="slider-name">thickness</span>
+                <input
+                  type="range"
+                  min={0.3}
+                  max={2.0}
+                  step={0.05}
+                  value={thickness}
+                  onChange={(event) => setThickness(Number(event.target.value))}
+                />
+              </label>
+              <label className="slider">
+                <span className="slider-name">speed</span>
+                <input
+                  type="range"
+                  min={0.25}
+                  max={4}
+                  step={0.25}
+                  value={speed}
+                  onChange={(event) => {
+                    const next = Number(event.target.value);
+                    setSpeed(next);
+                    speedRef.current = next;
+                  }}
+                />
+              </label>
+              <div className="stroke-toggle" role="radiogroup" aria-label="stroke type">
+                {(["pen", "ribbon"] as const).map((kind) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    role="radio"
+                    aria-checked={stroke === kind}
+                    className={"stroke-option" + (stroke === kind ? " selected" : "")}
+                    onClick={() => setStroke(kind)}
+                  >
+                    {kind}
+                  </button>
+                ))}
+              </div>
+              <div className="palette" role="radiogroup" aria-label="ink color">
+                {INK_COLORS.map((swatch) => (
+                  <button
+                    key={swatch.name}
+                    type="button"
+                    role="radio"
+                    aria-checked={swatch.value === color}
+                    aria-label={`ink color: ${swatch.name}`}
+                    title={swatch.name}
+                    className={
+                      "swatch" +
+                      (swatch.value === null ? " swatch-none" : "") +
+                      (swatch.value === color ? " selected" : "")
+                    }
+                    style={swatch.value ? { background: swatch.value } : undefined}
+                    onClick={() => setColor(swatch.value)}
+                  />
+                ))}
+                <input
+                  type="color"
+                  className={"swatch swatch-custom" + (color === customColor ? " selected" : "")}
+                  aria-label="ink color: custom"
+                  title="custom color"
+                  value={customColor}
+                  onClick={() => setColor(customColor)}
+                  onChange={(event) => {
+                    setCustomColor(event.target.value);
+                    setColor(event.target.value);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
 
       <p className={`note ${status === "error" ? "error" : ""}`}>
         {note ||

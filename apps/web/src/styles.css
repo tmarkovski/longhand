@@ -30,9 +30,37 @@ header h1 {
   margin-top: 4px;
 }
 
+.paper-wrap {
+  position: relative;
+}
+
+/* Floats over the paper's corner; visible whenever a finished line exists. */
+.replay {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d8d1c0;
+  border-radius: 50%;
+  background: rgba(255, 253, 248, 0.9);
+  color: #6f6a5e;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.replay:hover {
+  color: #1c1c28;
+  border-color: #1c1c28;
+}
+
 .paper {
+  display: block;
   width: 100%;
-  height: 300px;
+  height: clamp(200px, 38vh, 300px);
   background: #fffdf8;
   border: 1px solid #e5dfd2;
   border-radius: 12px;
@@ -188,6 +216,71 @@ header h1 {
   }
 }
 
+/* Everything that isn't "type and write" collapses into this panel; the
+ * toggle row doubles as a live summary of the current selections. */
+.options {
+  border: 1px solid #e5dfd2;
+  border-radius: 10px;
+  background: #fffdf8;
+}
+
+.options-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 13px;
+  color: #6f6a5e;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.options-title {
+  font-weight: 600;
+  color: #1c1c28;
+}
+
+.options-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.ink-dot {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(28, 28, 40, 0.18);
+  vertical-align: -1.5px;
+}
+
+.options-caret {
+  font-size: 10px;
+  color: #a39d8e;
+}
+
+.options-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid #efe9db;
+}
+
+.options-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .settings {
   display: flex;
   flex-wrap: wrap;
@@ -247,6 +340,29 @@ header h1 {
     0 0 0 4px #1c1c28;
 }
 
+/* Custom color: a native color input dressed as a swatch, with a hue
+ * ring so it reads as "pick anything". */
+.swatch-custom {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 2px;
+  background: conic-gradient(#e11d48, #f59e0b, #22c55e, #06b6d4, #6366f1, #d946ef, #e11d48);
+}
+
+.swatch-custom::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.swatch-custom::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.swatch-custom::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
 /* "no color": paper with a slash, the default-ink / inherit option. */
 .swatch-none {
   background:
@@ -258,6 +374,80 @@ header h1 {
       transparent 56%
     )
     #fffdf8;
+}
+
+/* Phones: the text row keeps the input full-width with the two buttons
+ * splitting a second line, and each options control gets its own row with
+ * comfortable touch targets. */
+@media (max-width: 640px) {
+  .page {
+    padding: 24px 14px 16px;
+    gap: 14px;
+  }
+
+  header h1 {
+    font-size: 24px;
+  }
+
+  .controls .text {
+    flex: 1 1 100%;
+  }
+
+  .controls > button {
+    flex: 1;
+    padding: 12px 14px;
+  }
+
+  .options-toggle {
+    padding: 12px;
+  }
+
+  .options-panel {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .engine-select {
+    flex: 1;
+  }
+
+  .settings {
+    gap: 12px;
+  }
+
+  .slider {
+    width: 100%;
+  }
+
+  /* Fixed label column so the three tracks line up. */
+  .slider-name {
+    min-width: 64px;
+  }
+
+  .slider input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .stroke-toggle {
+    width: 100%;
+  }
+
+  .stroke-option {
+    flex: 1;
+    padding: 9px 12px;
+    text-align: center;
+  }
+
+  .palette {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .swatch {
+    width: 27px;
+    height: 27px;
+  }
 }
 
 .note {

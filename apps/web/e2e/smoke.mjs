@@ -46,6 +46,10 @@ await page.waitForFunction(
   { timeout: 90_000 },
 );
 
+// Every control besides the text row lives in a collapsed options panel;
+// open it once and leave it open for the whole run.
+await page.getByRole("button", { name: /^options/ }).click();
+
 // Freehand write. Generation now completes before the pen animates, so the
 // wait covers a full generate + partial replay.
 await writeButton.click();
@@ -60,12 +64,32 @@ const gravesRibbonInk = await inkPixels();
 await page.getByRole("radio", { name: "pen", exact: true }).click();
 await page.waitForTimeout(500);
 
+// Replay rewinds the finished line and animates it again: shortly after
+// clicking there should be some ink, but much less than the finished line.
+const seedBeforeReplay = await page.locator("footer").textContent();
+await page.getByRole("button", { name: "replay" }).click();
+await page.waitForTimeout(700);
+const replayInk = await inkPixels();
+if (replayInk <= 0 || replayInk >= freehandInk * 0.8) {
+  console.error(`replay did not restart the animation (${replayInk} vs ${freehandInk})`);
+  process.exit(1);
+}
+if ((await page.locator("footer").textContent()) !== seedBeforeReplay) {
+  console.error("replay changed the seed — it should reuse the same take");
+  process.exit(1);
+}
+
 // Styled write (exercises priming in the worker), via the preview picker.
+// Every write draws a fresh seed, so the footer should change.
 await page.click(".style-picker-trigger");
 await page.getByRole("option", { name: "style 3", exact: true }).click();
 await writeButton.click();
 await page.waitForTimeout(18_000);
 const styledInk = await inkPixels();
+if ((await page.locator("footer").textContent()) === seedBeforeReplay) {
+  console.error("write reused the previous seed — every write should reshuffle");
+  process.exit(1);
+}
 
 // Engine switch: the calligrapher model loads (2.6 MB), the style picker
 // re-populates with the calligrapher styles, and a write paints ribbons.
