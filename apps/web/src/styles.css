@@ -55,25 +55,137 @@ header h1 {
   background: #fffdf8;
 }
 
-.controls select,
-.controls button {
+.controls > button {
   padding: 10px 14px;
   font-size: 14px;
+  border: 1px solid #1c1c28;
+  border-radius: 8px;
+  background: #1c1c28;
+  color: #fffdf8;
+  cursor: pointer;
+}
+
+.controls > button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.engine-select {
+  appearance: none;
+  padding: 10px 30px 10px 14px;
+  font: inherit;
+  font-size: 14px;
+  color: inherit;
+  border: 1px solid #d8d1c0;
+  border-radius: 8px;
+  background: #fffdf8
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M1 1l4 4 4-4" fill="none" stroke="%23a39d8e" stroke-width="1.5" stroke-linecap="round"/></svg>')
+    no-repeat right 12px center;
+  cursor: pointer;
+}
+
+.style-picker {
+  position: relative;
+}
+
+.style-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
   border: 1px solid #d8d1c0;
   border-radius: 8px;
   background: #fffdf8;
   cursor: pointer;
+  font: inherit;
+  color: inherit;
 }
 
-.controls button {
-  background: #1c1c28;
-  color: #fffdf8;
-  border-color: #1c1c28;
+.style-picker-trigger img {
+  height: 20px;
+  width: 150px;
+  object-fit: contain;
+  object-position: left center;
 }
 
-.controls button:disabled {
-  opacity: 0.4;
-  cursor: default;
+.style-picker-name {
+  font-size: 11px;
+  color: #a39d8e;
+  white-space: nowrap;
+}
+
+.style-picker-caret {
+  font-size: 10px;
+  color: #a39d8e;
+}
+
+.style-picker-panel {
+  position: absolute;
+  z-index: 10;
+  bottom: calc(100% + 6px);
+  left: 0;
+  width: 340px;
+  max-height: 42vh;
+  overflow-y: auto;
+  padding: 6px;
+  list-style: none;
+  background: #fffdf8;
+  border: 1px solid #d8d1c0;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(28, 28, 40, 0.14);
+}
+
+.style-picker-option {
+  padding: 8px 10px 6px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.style-picker-option img {
+  display: block;
+  width: 100%;
+  height: 34px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.style-picker-option .style-picker-name {
+  display: block;
+  margin-top: 2px;
+}
+
+.style-picker-option.highlighted {
+  background: #f3efe7;
+}
+
+.style-picker-option.selected .style-picker-name {
+  color: #1c1c28;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .style-picker {
+    flex: 1 1 100%;
+  }
+
+  .style-picker-trigger {
+    width: 100%;
+  }
+
+  /* Ink stretches, pushing the label and caret to the right edge. */
+  .style-picker-trigger img {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .style-picker-panel {
+    width: 100%;
+  }
+
+  .style-picker-option .style-picker-name {
+    text-align: right;
+  }
 }
 
 .slider {

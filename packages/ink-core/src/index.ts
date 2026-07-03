@@ -34,6 +34,35 @@ export interface InkDocument {
 /** One raw model output row: pen movement delta and end-of-stroke flag. */
 export type StrokeOffset = readonly [dx: number, dy: number, eos: number];
 
+/** Incremental generation of one line: step until it reports done. */
+export interface LineWriter {
+  readonly done: boolean;
+  /** Advance one timestep. Returns the sampled offset, or null once done. */
+  step(): StrokeOffset | null;
+}
+
+export interface EngineWriteOptions {
+  /** Legibility / sampling sharpness; each engine has its own default. */
+  bias?: number;
+  /** Style id, or null for the engine's unstyled/random mode. */
+  style?: number | null;
+  /** RNG seed; same inputs + seed reproduce the exact same strokes. */
+  seed?: number;
+}
+
+/**
+ * The contract every handwriting engine implements. Engines emit raw
+ * model-space stroke offsets (y up); everything downstream — layout,
+ * polish, rendering — consumes the shared IR above.
+ */
+export interface InkEngine {
+  /** Style ids this engine can write. */
+  readonly styles: number[];
+  /** Characters the engine was trained on; others must be dropped. */
+  supports(character: string): boolean;
+  writer(text: string, options?: EngineWriteOptions): LineWriter;
+}
+
 /**
  * Fold raw (Δx, Δy, eos) offsets into absolute screen-space strokes.
  * The model's y grows upward, so it is flipped here. eos=1 marks the last

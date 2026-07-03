@@ -1,0 +1,23 @@
+{
+  "name": "@longhand/ink-calligrapher",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@longhand/ink-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@longhand/ink-render": "workspace:*",
+    "@types/node": "^26.1.0",
+    "tsx": "^4.22.5",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

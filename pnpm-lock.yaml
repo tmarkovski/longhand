@@ -10,6 +10,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@longhand/ink-calligrapher':
+        specifier: workspace:*
+        version: link:../../packages/ink-calligrapher
       '@longhand/ink-core':
         specifier: workspace:*
         version: link:../../packages/ink-core
@@ -44,6 +47,28 @@ importers:
       vite:
         specifier: ^7.3.4
         version: 7.3.6(@types/node@26.1.0)(tsx@4.22.5)
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.6(@types/node@26.1.0)(tsx@4.22.5)
+
+  packages/ink-calligrapher:
+    dependencies:
+      '@longhand/ink-core':
+        specifier: workspace:*
+        version: link:../ink-core
+    devDependencies:
+      '@longhand/ink-render':
+        specifier: workspace:*
+        version: link:../ink-render
+      '@types/node':
+        specifier: ^26.1.0
+        version: 26.1.0
+      tsx:
+        specifier: ^4.22.5
+        version: 4.22.5
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
       vitest:
         specifier: ^3.2.4
         version: 3.2.6(@types/node@26.1.0)(tsx@4.22.5)

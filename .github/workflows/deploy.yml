@@ -40,6 +40,9 @@ jobs:
           uv sync
           uv run python export_weights.py --out ../apps/web/public/model/graves-v1.bin
 
+      - name: Copy calligrapher model into the site
+        run: cp vendor/calligrapher-ai/d.bin apps/web/public/model/calligrapher-v1.bin
+
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm --filter @longhand/web build

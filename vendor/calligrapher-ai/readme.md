@@ -1,9 +1,12 @@
 # calligrapher.ai vendor snapshot
 
-Snapshot of https://www.calligrapher.ai/ (Sean Vasquez), pulled 2026-07-03, for
-evaluation as an engine replacement. Unlicensed third-party code and weights:
-**internal use only, must not be deployed or made public** until licensing is
-resolved (see docs/plan.md licensing section).
+Snapshot of https://www.calligrapher.ai/ (Sean Vasquez), pulled 2026-07-03.
+Unlicensed third-party code and weights. `d.bin` is the source of truth for
+the app's calligrapher engine (`@longhand/ink-calligrapher` is a bit-exact TS
+port, parity-tested against `engine.pretty.js`); the deploy copies it to
+`apps/web/public/model/calligrapher-v1.bin`. Licensing is unresolved and must
+be settled (permission from the author, or our own training run) before
+monetizing — see docs/plan.md.
 
 ## Files
 

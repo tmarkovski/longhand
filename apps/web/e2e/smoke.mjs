@@ -1,6 +1,7 @@
 /**
  * Headless smoke test: loads the app, writes freehand and with a style,
- * and verifies ink actually lands on the canvas with no console errors.
+ * switches to the calligrapher engine and writes again, and verifies ink
+ * actually lands on the canvas with no console errors.
  *
  *   node e2e/smoke.mjs [baseUrl] [screenshotPath]
  */
@@ -33,10 +34,14 @@ async function inkPixels() {
 await page.goto(baseUrl);
 const writeButton = page.getByRole("button", { name: "write" });
 
-// Model load (15 MB) enables the buttons.
+// Model load (15 MB) enables the write button. (The style-picker trigger is
+// also a button and never disables, so target the write button by text.)
 await writeButton.waitFor({ state: "visible" });
 await page.waitForFunction(
-  () => !document.querySelector("button")?.disabled,
+  () =>
+    [...document.querySelectorAll("button")].some(
+      (button) => button.textContent.trim() === "write" && !button.disabled,
+    ),
   undefined,
   { timeout: 90_000 },
 );
@@ -47,22 +52,47 @@ await writeButton.click();
 await page.waitForTimeout(10_000);
 const freehandInk = await inkPixels();
 
-// Styled write (exercises priming in the worker).
-await page.selectOption("select", "3");
+// Styled write (exercises priming in the worker), via the preview picker.
+await page.click(".style-picker-trigger");
+await page.getByRole("option", { name: "style 3", exact: true }).click();
 await writeButton.click();
 await page.waitForTimeout(18_000);
 const styledInk = await inkPixels();
 
+// Engine switch: the calligrapher model loads (2.6 MB), the style picker
+// re-populates with the calligrapher styles, and a write paints ribbons.
+const waitForIdle = () =>
+  page.waitForFunction(
+    () =>
+      [...document.querySelectorAll("button")].some(
+        (button) => button.textContent.trim() === "write" && !button.disabled,
+      ),
+    undefined,
+    { timeout: 90_000 },
+  );
+await page.selectOption(".engine-select", "calligrapher");
+await waitForIdle();
+await page.click(".style-picker-trigger");
+await page.getByRole("option", { name: "style 6", exact: true }).click();
+await writeButton.click();
+await page.waitForTimeout(12_000);
+const calligrapherInk = await inkPixels();
+
+// And back: the graves engine is cached, so this is instant.
+await page.selectOption(".engine-select", "graves");
+await waitForIdle();
+
 await page.screenshot({ path: screenshotPath, fullPage: true });
 await browser.close();
 
-console.log(`freehand ink pixels: ${freehandInk}`);
-console.log(`styled ink pixels:   ${styledInk}`);
+console.log(`freehand ink pixels:     ${freehandInk}`);
+console.log(`styled ink pixels:       ${styledInk}`);
+console.log(`calligrapher ink pixels: ${calligrapherInk}`);
 if (errors.length > 0) {
   console.error("console errors:", errors);
   process.exit(1);
 }
-if (freehandInk < 1000 || styledInk < 1000) {
+if (freehandInk < 1000 || styledInk < 1000 || calligrapherInk < 1000) {
   console.error("canvas looks empty — expected at least 1000 ink pixels");
   process.exit(1);
 }

@@ -12,6 +12,8 @@
 
 import type { InkLine } from "@longhand/ink-core";
 
+export { ribbonPath, RIBBON_WIDTH } from "./ribbon.js";
+
 /** Savitzky-Golay smoothing kernel, window 7 / polyorder 3 (savgol_coeffs). */
 const SG_KERNEL = [-2 / 21, 3 / 21, 6 / 21, 7 / 21, 6 / 21, 3 / 21, -2 / 21];
 const SG_HALF = 3;

@@ -4,7 +4,7 @@
  * sampling with bias sharpening, and attention-based termination.
  */
 
-import type { StrokeOffset } from "@longhand/ink-core";
+import type { InkEngine, StrokeOffset } from "@longhand/ink-core";
 import { Cell, MAX_CHARS } from "./cell.js";
 import type { CellState, MdnParams } from "./cell.js";
 import { Rng } from "./rng.js";
@@ -21,7 +21,7 @@ export interface WriteOptions {
   seed?: number;
 }
 
-export class GravesModel {
+export class GravesModel implements InkEngine {
   readonly assets: ModelAssets;
   private readonly cell: Cell;
   private readonly charToIndex: Map<string, number>;
@@ -30,6 +30,10 @@ export class GravesModel {
     this.assets = assets;
     this.cell = new Cell(assets);
     this.charToIndex = new Map(assets.alphabet.map((character, index) => [character, index]));
+  }
+
+  get styles(): number[] {
+    return this.assets.styles.map((style) => style.id);
   }
 
   /** Encode text to alphabet indices with the trailing 0 terminator. */
