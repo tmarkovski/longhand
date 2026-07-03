@@ -6,7 +6,9 @@ requires-python = ">=3.13"
 dependencies = [
     "click>=8.1",
     "numpy>=2.0",
-    "mlx>=0.31",
+    # [cpu] pulls in mlx-cpu (libmlx.so) on Linux; the extra is a no-op on
+    # macOS, where mlx-metal ships automatically.
+    "mlx[cpu]>=0.31",
     "graves-handwriting-mlx",
 ]
 
