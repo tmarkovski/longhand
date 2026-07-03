@@ -73,14 +73,16 @@ const SPECS: Record<EngineId, EngineSpec> = {
         descriptor: {
           id: "calligrapher",
           label: "calligrapher",
-          renderer: "ribbon",
+          // The model was tuned for the ribbon look, but the app's default
+          // ink is the pen; ribbon stays one toggle away.
+          renderer: "pen",
           ribbonWidthFactor: 1,
           styles: [...EXPOSED_STYLES],
           alphabet: [...CALLIGRAPHER_ALPHABET],
           // No freehand equivalent: the model always writes with a style,
-          // so there's no null option and style 1 is the default.
+          // so there's no null option and style 2 is the default.
           nullStyleLabel: null,
-          defaultStyle: EXPOSED_STYLES[0]!,
+          defaultStyle: 2,
           maxTextLength: 90,
         },
       };
@@ -113,7 +115,9 @@ async function activate(id: EngineId): Promise<LoadedEngine> {
 }
 
 // Default engine, ready as soon as the worker boots.
-activate("graves").catch((error: unknown) => post({ type: "error", message: String(error) }));
+activate("calligrapher").catch((error: unknown) =>
+  post({ type: "error", message: String(error) }),
+);
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;

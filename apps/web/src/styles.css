@@ -389,6 +389,10 @@ header h1 {
     font-size: 24px;
   }
 
+  .paper {
+    height: clamp(150px, 24vh, 210px);
+  }
+
   .controls .text {
     flex: 1 1 100%;
   }

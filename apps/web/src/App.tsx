@@ -23,6 +23,10 @@ const PEN_WIDTH_PER_SCALE = 2.2 / 1.6;
 // inherit from wherever they're embedded.
 const DEFAULT_INK = "#1c1c28";
 
+// Middle of the thickness slider (0.3–2.0) and a brisk-but-watchable pace.
+const DEFAULT_THICKNESS = 1.15;
+const DEFAULT_SPEED = 1.5;
+
 /** Ink palette; value null is "no color" (default ink / inherit). */
 const INK_COLORS: ReadonlyArray<{ name: string; value: string | null }> = [
   { name: "no color", value: null },
@@ -64,7 +68,7 @@ export default function App() {
   // frame (instead of measuring from a start time) lets the speed setting
   // change mid-write without the pen jumping.
   const penRef = useRef({ drawn: 0, progress: 0, lastTick: 0 });
-  const speedRef = useRef(1);
+  const speedRef = useRef(DEFAULT_SPEED);
   const rafRef = useRef(0);
   const alphabetRef = useRef<Set<string>>(new Set());
   const rendererRef = useRef<RendererKind>("pen");
@@ -73,21 +77,21 @@ export default function App() {
   // without re-subscribing.
   const inkRef = useRef<{ color: string | null; thickness: number }>({
     color: null,
-    thickness: 1,
+    thickness: DEFAULT_THICKNESS,
   });
 
   const [status, setStatus] = useState<Status>("loading");
-  const [note, setNote] = useState("loading the model (15 MB, one time)…");
+  const [note, setNote] = useState("loading the calligrapher model (2.6 MB, one time)…");
   const [text, setText] = useState("a line of ink, thinking as it goes");
   const [bias, setBias] = useState(0.75);
   const [style, setStyle] = useState<number | null>(null);
-  const [engine, setEngine] = useState<EngineId>("graves");
+  const [engine, setEngine] = useState<EngineId>("calligrapher");
   const [descriptor, setDescriptor] = useState<EngineDescriptor | null>(null);
   const [seed, setSeed] = useState(42);
   const [color, setColor] = useState<string | null>(null);
   const [customColor, setCustomColor] = useState(DEFAULT_INK);
-  const [thickness, setThickness] = useState(1);
-  const [speed, setSpeed] = useState(1);
+  const [thickness, setThickness] = useState(DEFAULT_THICKNESS);
+  const [speed, setSpeed] = useState(DEFAULT_SPEED);
   const [stroke, setStroke] = useState<RendererKind>("pen");
   const [optionsOpen, setOptionsOpen] = useState(false);
 

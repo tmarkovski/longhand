@@ -9,7 +9,8 @@ export type RendererKind = "pen" | "ribbon";
 export interface EngineDescriptor {
   id: EngineId;
   label: string;
-  /** The engine's native ink look, used as the default stroke type. */
+  /** Stroke type selected when the engine activates (the app's default
+   * look for it, not necessarily the model's native one). */
   renderer: RendererKind;
   /** Corrects ribbon width for the engine's model units: the ribbon's
    * speed term is unit-sensitive, and graves units run ~3x larger than
