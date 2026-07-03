@@ -12,15 +12,17 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { offsetsToLine, lineBounds, transformLine, type InkLine } from "@longhand/ink-core";
 import { penWidths, polishLine } from "@longhand/ink-render";
-import { GravesModel } from "../src/engine.js";
+import { GravesModel, STEPS_PER_CHARACTER } from "../src/engine.js";
 import { loadAssets } from "../test/helpers.js";
 
-// App defaults (apps/web/src/App.tsx): same phrase, bias, seed, scale, ink.
+// Same phrase and seed as the app's defaults (apps/web/src/App.tsx), but a
+// neater bias and a thinner pen: previews render small, where extra
+// legibility and a lighter line read better than the app defaults.
 const TEXT = "a line of ink, thinking as it goes";
-const BIAS = 0.75;
+const BIAS = 0.95;
 const SEED = 42;
 const SCALE = 1.6; // App.tsx MAX_SCALE
-const BASE_WIDTH = 2.2; // App.tsx BASE_WIDTH
+const BASE_WIDTH = 1.8;
 const PADDING = 6;
 
 // SVG can't vary width along one path, so segments are grouped into runs of
@@ -91,13 +93,31 @@ const jobs: Array<[name: string, style: number | null]> = [
   ...model.assets.styles.map((style) => [`style-${style.id}`, style.id] as [string, number]),
 ];
 
+// A healthy line terminates naturally (attention reaches the last character
+// and the pen lifts). A collapsed one scribbles until it exhausts the step
+// budget, so hitting the budget is the retry signal.
+const STEP_BUDGET = STEPS_PER_CHARACTER * TEXT.length;
+const MAX_ATTEMPTS = 6;
+
+// The budget retry only catches lines that never terminate. A scribble the
+// model recovers from still ends naturally, so those seeds are re-picked by
+// eye. Re-check whenever TEXT or BIAS changes.
+const SEED_OVERRIDES = new Map<string, number>([["freehand", 44]]);
+
 for (const [name, style] of jobs) {
   const start = performance.now();
-  const offsets = model.write(TEXT, { bias: BIAS, style, seed: SEED });
+  const baseSeed = SEED_OVERRIDES.get(name) ?? SEED;
+  let offsets = model.write(TEXT, { bias: BIAS, style, seed: baseSeed });
+  let seed = baseSeed;
+  for (let attempt = 1; offsets.length >= STEP_BUDGET && attempt < MAX_ATTEMPTS; attempt++) {
+    seed = baseSeed + attempt;
+    console.log(`  ${name}: collapsed at seed ${seed - 1}, retrying with seed ${seed}`);
+    offsets = model.write(TEXT, { bias: BIAS, style, seed });
+  }
   const svg = renderPreview(polishLine(offsetsToLine(offsets)));
   const file = `${outDir}/${name}.svg`;
   writeFileSync(file, svg);
   console.log(
-    `wrote ${file} (${offsets.length} steps, ${(svg.length / 1024).toFixed(1)} KB, ${Math.round(performance.now() - start)}ms)`,
+    `wrote ${file} (seed ${seed}, ${offsets.length} steps, ${(svg.length / 1024).toFixed(1)} KB, ${Math.round(performance.now() - start)}ms)`,
   );
 }
