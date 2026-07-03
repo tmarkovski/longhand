@@ -93,25 +93,43 @@ const jobs: Array<[name: string, style: number | null]> = [
   ...model.assets.styles.map((style) => [`style-${style.id}`, style.id] as [string, number]),
 ];
 
-// A healthy line terminates naturally (attention reaches the last character
-// and the pen lifts). A collapsed one scribbles until it exhausts the step
-// budget, so hitting the budget is the retry signal.
 const STEP_BUDGET = STEPS_PER_CHARACTER * TEXT.length;
 const MAX_ATTEMPTS = 6;
 
-// The budget retry only catches lines that never terminate. A scribble the
-// model recovers from still ends naturally, so those seeds are re-picked by
-// eye. Re-check whenever TEXT or BIAS changes.
+// Automatic retry catches two crisp failure signatures. A scribble the model
+// recovers from still passes both, so those seeds are re-picked by eye.
+// Re-check the overrides whenever TEXT or BIAS changes.
 const SEED_OVERRIDES = new Map<string, number>([["freehand", 44]]);
+
+/** Reason this line needs a new seed, or null if it looks healthy. */
+function rejectReason(offsets: ReturnType<GravesModel["write"]>): string | null {
+  // A healthy line terminates naturally (attention reaches the last
+  // character and the pen lifts); a collapsed one scribbles until it
+  // exhausts the step budget.
+  if (offsets.length >= STEP_BUDGET) return "collapsed";
+  // Some primings open with a pen tap: a degenerate first stroke well under
+  // a unit wide, where a real letter start spans 10+ units.
+  const first = offsetsToLine(offsets).strokes[0]!;
+  const xs = first.points.map(([x]) => x);
+  const ys = first.points.map(([, y]) => y);
+  const size = Math.hypot(
+    Math.max(...xs) - Math.min(...xs),
+    Math.max(...ys) - Math.min(...ys),
+  );
+  if (first.points.length < 8 && size < 3) return "leading pen-tap dot";
+  return null;
+}
 
 for (const [name, style] of jobs) {
   const start = performance.now();
   const baseSeed = SEED_OVERRIDES.get(name) ?? SEED;
   let offsets = model.write(TEXT, { bias: BIAS, style, seed: baseSeed });
   let seed = baseSeed;
-  for (let attempt = 1; offsets.length >= STEP_BUDGET && attempt < MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 1; attempt < MAX_ATTEMPTS; attempt++) {
+    const reason = rejectReason(offsets);
+    if (reason === null) break;
     seed = baseSeed + attempt;
-    console.log(`  ${name}: collapsed at seed ${seed - 1}, retrying with seed ${seed}`);
+    console.log(`  ${name}: ${reason} at seed ${seed - 1}, retrying with seed ${seed}`);
     offsets = model.write(TEXT, { bias: BIAS, style, seed });
   }
   const svg = renderPreview(polishLine(offsetsToLine(offsets)));
