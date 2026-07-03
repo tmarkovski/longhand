@@ -1,0 +1,3 @@
+[submodule "graves-handwriting-mlx"]
+	path = graves-handwriting-mlx
+	url = https://github.com/tmarkovski/graves-handwriting-mlx.git
