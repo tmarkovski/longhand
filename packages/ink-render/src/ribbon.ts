@@ -37,15 +37,22 @@ function smoothedSpeeds(points: readonly Point[]): number[] {
   return smoothed;
 }
 
+/** The ribbon's two edges, one point pair per input point. */
+export interface RibbonOutline {
+  top: Array<[number, number]>;
+  bottom: Array<[number, number]>;
+}
+
 /**
- * Build the filled-outline path for one stroke. Returns null for strokes
- * of fewer than two points (the reference draws nothing for those).
+ * Compute the ribbon's edge points for one stroke — the geometry behind
+ * `ribbonPath`, exposed so exporters can measure the ribbon's extent
+ * (e.g. to size a reveal mask). Returns null below two points.
  */
-export function ribbonPath(
+export function ribbonOutline(
   points: readonly Point[],
   scale: number,
   width: number = RIBBON_WIDTH,
-): string | null {
+): RibbonOutline | null {
   if (points.length < 2) return null;
   const speeds = smoothedSpeeds(points);
 
@@ -71,6 +78,21 @@ export function ribbonPath(
     top.push([points[i]![0] + 2 * nx, points[i]![1] + 2 * ny]);
     bottom.push([points[i]![0] - 2 * nx, points[i]![1] - 2 * ny]);
   }
+  return { top, bottom };
+}
+
+/**
+ * Build the filled-outline path for one stroke. Returns null for strokes
+ * of fewer than two points (the reference draws nothing for those).
+ */
+export function ribbonPath(
+  points: readonly Point[],
+  scale: number,
+  width: number = RIBBON_WIDTH,
+): string | null {
+  const edges = ribbonOutline(points, scale, width);
+  if (!edges) return null;
+  const { top, bottom } = edges;
 
   const outline = top.concat(bottom.reverse());
   const count = outline.length;

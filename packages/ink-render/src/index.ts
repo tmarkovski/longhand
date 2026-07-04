@@ -12,8 +12,9 @@
 
 import type { InkLine } from "@longhand/ink-core";
 
-export { ribbonPath, RIBBON_WIDTH } from "./ribbon.js";
-export { lineToSvg, type LineSvgOptions } from "./svg.js";
+export { ribbonOutline, ribbonPath, RIBBON_WIDTH, type RibbonOutline } from "./ribbon.js";
+export { layoutLine, lineToSvg, penStrokes, type LineLayout, type LineSvgOptions, type PenRun, type PenStrokeParts } from "./svg.js";
+export { lineToAnimatedSvg, type AnimatedSvgOptions } from "./animate.js";
 
 /** Savitzky-Golay smoothing kernel, window 7 / polyorder 3 (savgol_coeffs). */
 const SG_KERNEL = [-2 / 21, 3 / 21, 6 / 21, 7 / 21, 6 / 21, 3 / 21, -2 / 21];

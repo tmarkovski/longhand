@@ -11,6 +11,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import ExportDialog from "./ExportDialog.js";
+import type { ExportStyle } from "./export.js";
 import StylePicker, { styleOptions } from "./StylePicker.js";
 import type {
   EngineDescriptor,
@@ -23,6 +25,11 @@ import type {
 const DT_MS = 8; // one model timestep of pen time
 const MARGIN_X = 32;
 const MARGIN_Y = 24;
+// Short words are width-light, so the height limit is what binds for them;
+// cap the ink to 80% of the canvas so a two-letter word doesn't balloon to
+// fill it edge to edge. Screen fit only — an SVG export lays out from the
+// raw offsets, not this canvas fit.
+const MAX_INK_HEIGHT = 0.8;
 // Pen ink weight per unit of layout scale, so ink gets heavier as a line
 // scales up to fill the canvas (the ribbon's width already rides the
 // layout scale the same way). 2.2px at the old fixed 1.6 scale.
@@ -327,7 +334,8 @@ export default function App() {
     const inkHeight = Math.max(bounds.maxY - bounds.minY, 1);
     const scale = Math.min(
       (canvas.clientWidth - 2 * MARGIN_X) / inkWidth,
-      (canvas.clientHeight - 2 * MARGIN_Y) / inkHeight,
+      Math.min(canvas.clientHeight - 2 * MARGIN_Y, canvas.clientHeight * MAX_INK_HEIGHT) /
+        inkHeight,
     );
     const placed = transformLine(line, {
       scale,
@@ -530,6 +538,24 @@ export default function App() {
     rafRef.current = requestAnimationFrame(tick);
   }
 
+  /** The current look, resolved for the exporters (same formulas layout()
+   * and the painters use, minus the canvas-fit scale). */
+  function exportStyle(): ExportStyle {
+    return {
+      renderer: rendererRef.current,
+      ink: inkRef.current.color ?? DEFAULT_INK,
+      paper,
+      penBasePerScale:
+        PEN_WIDTH_PER_SCALE * inkRef.current.thickness * inkWeightRef.current.pen,
+      ribbonWidth:
+        RIBBON_WIDTH *
+        ribbonFactorRef.current *
+        inkRef.current.thickness *
+        inkWeightRef.current.ribbon,
+      msPerStep: DT_MS / speedRef.current,
+    };
+  }
+
   const busy = status === "loading" || status === "warming";
   const options = styleOptions(descriptor);
   const styleLabel = options.find((option) => option.id === style)?.label ?? "style";
@@ -548,43 +574,57 @@ export default function App() {
         </p>
       </header>
 
-      <div className="relative">
+      {/* The paper: the canvas up top, and below it — in real layout, so
+          ink can never run into them — a strip with the status line and
+          the playback control. The strip's height is fixed so the canvas
+          doesn't shift when the button comes and goes. */}
+      <div
+        className="overflow-hidden rounded-3xl border bg-card shadow-xs"
+        style={paper ? { background: paper } : undefined}
+      >
         <canvas
           ref={canvasRef}
-          className="block h-[clamp(150px,24vh,210px)] w-full rounded-3xl border bg-card shadow-xs sm:h-[clamp(200px,38vh,300px)]"
-          style={paper ? { background: paper } : undefined}
+          className="block h-[clamp(140px,20vh,180px)] w-full sm:h-[clamp(170px,30vh,250px)]"
         />
-        {/* Status lives on the paper itself, out of the ink's usual way.
-            Width stops short of the replay button in the other corner. */}
-        <p
-          role="status"
-          className={cn(
-            "pointer-events-none absolute bottom-3.5 left-5 max-w-[calc(100%-5.5rem)] truncate text-sm",
-            status === "error" ? "text-destructive" : "text-muted-foreground",
-          )}
-        >
-          {note ||
-            (status === "thinking"
-              ? "thinking…"
-              : status === "writing"
-                ? "writing…"
-                : status === "paused"
-                  ? "paused"
-                  : "")}
-        </p>
-        {(status === "ready" || status === "writing" || status === "paused") &&
-          offsetsRef.current.length > 0 && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="absolute right-3 bottom-3 rounded-full bg-card/90"
-              title={status === "writing" ? "pause" : "play"}
-              aria-label={status === "writing" ? "pause" : "play"}
-              onClick={togglePlayback}
-            >
-              {status === "writing" ? <PauseIcon /> : <PlayIcon />}
-            </Button>
-          )}
+        <div className="flex h-12 items-center gap-3 px-3 pb-1">
+          {(status === "ready" || status === "writing" || status === "paused") &&
+            offsetsRef.current.length > 0 && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="rounded-full bg-card/90"
+                title={status === "writing" ? "pause" : "play"}
+                aria-label={status === "writing" ? "pause" : "play"}
+                onClick={togglePlayback}
+              >
+                {status === "writing" ? <PauseIcon /> : <PlayIcon />}
+              </Button>
+            )}
+          <p
+            role="status"
+            className={cn(
+              "min-w-0 flex-1 truncate text-sm",
+              status === "error" ? "text-destructive" : "text-muted-foreground",
+            )}
+          >
+            {note ||
+              (status === "thinking"
+                ? "thinking…"
+                : status === "writing"
+                  ? "writing…"
+                  : status === "paused"
+                    ? "paused"
+                    : "")}
+          </p>
+          {(status === "ready" || status === "writing" || status === "paused") &&
+            offsetsRef.current.length > 0 && (
+              <ExportDialog
+                text={text}
+                getOffsets={() => offsetsRef.current}
+                getStyle={exportStyle}
+              />
+            )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
