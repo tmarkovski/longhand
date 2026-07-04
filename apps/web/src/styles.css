@@ -126,6 +126,9 @@
     }
   html {
     @apply font-sans;
+    /* Reserve the scrollbar's column up front, so the page doesn't shift
+       sideways the moment opening the options panel makes it scrollable. */
+    scrollbar-gutter: stable;
     }
 }
 

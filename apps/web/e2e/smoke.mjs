@@ -90,11 +90,12 @@ const calligrapherRibbonInk = await inkPixels();
 await page.getByRole("radio", { name: "pen", exact: true }).click();
 await page.waitForTimeout(500);
 
-// Replay rewinds the finished line and animates it again: shortly after
+// Play on a finished line rewinds and animates it again: shortly after
 // clicking there should be some ink, but much less than the finished line,
-// and the seed must not change (same take).
+// and the seed must not change (same take). (Mid-write the same button
+// reads "pause".)
 const seedBeforeReplay = await page.locator("footer").textContent();
-await page.getByRole("button", { name: "replay" }).click();
+await page.getByRole("button", { name: "play", exact: true }).click();
 await page.waitForTimeout(700);
 const replayInk = await inkPixels();
 if (replayInk <= 0 || replayInk >= calligrapherPenInk * 0.8)

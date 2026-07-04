@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
-import { ChevronDownIcon, RotateCcwIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, PauseIcon, PlayIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -64,7 +64,18 @@ const INK_COLORS: ReadonlyArray<{ name: string; value: string | null }> = [
   { name: "violet", value: "#6d28d9" },
 ];
 
-type Status = "loading" | "ready" | "warming" | "thinking" | "writing" | "error";
+/** Paper palette for the canvas; value null is the default card surface. */
+const PAPER_COLORS: ReadonlyArray<{ name: string; value: string | null }> = [
+  { name: "no color", value: null },
+  { name: "ivory", value: "#f7f2e7" },
+  { name: "parchment", value: "#f0e6cf" },
+  { name: "mist", value: "#eef0f2" },
+  { name: "rose", value: "#f8edee" },
+  { name: "sage", value: "#edf2ea" },
+  { name: "sky", value: "#e9f1f7" },
+];
+
+type Status = "loading" | "ready" | "warming" | "thinking" | "writing" | "paused" | "error";
 
 /** One animation step: a polished point with its ink width. A stroke-index
  * change between consecutive steps means the pen lifted in between. */
@@ -119,12 +130,12 @@ function Segmented<T extends string>({
       ref={groupRef}
       role="radiogroup"
       aria-label={ariaLabel}
-      className="relative inline-flex rounded-lg border border-input p-0.5 max-sm:flex-1"
+      className="relative inline-flex rounded-full border border-input p-0.5 max-sm:flex-1"
     >
       {pill && (
         <span
           aria-hidden
-          className="absolute top-0.5 bottom-0.5 rounded-md bg-primary transition-[left,width] duration-200 ease-out"
+          className="absolute top-0.5 bottom-0.5 rounded-full bg-primary transition-[left,width] duration-200 ease-out"
           style={{ left: pill.left, width: pill.width }}
         />
       )}
@@ -135,7 +146,7 @@ function Segmented<T extends string>({
           role="radio"
           aria-checked={option.value === value}
           className={cn(
-            "relative cursor-pointer rounded-md px-3 py-1 text-sm transition-colors max-sm:flex-1",
+            "relative cursor-pointer rounded-full px-3 py-1 text-sm transition-colors max-sm:flex-1",
             option.value === value
               ? "text-primary-foreground"
               : "text-muted-foreground hover:text-foreground",
@@ -184,6 +195,8 @@ export default function App() {
   const [seed, setSeed] = useState(42);
   const [color, setColor] = useState<string | null>(null);
   const [customColor, setCustomColor] = useState(DEFAULT_INK);
+  const [paper, setPaper] = useState<string | null>(null);
+  const [customPaper, setCustomPaper] = useState("#f7f2e7");
   const [thickness, setThickness] = useState(DEFAULT_THICKNESS);
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
   const [stroke, setStroke] = useState<RendererKind>("pen");
@@ -270,20 +283,27 @@ export default function App() {
    * then repaint (or, mid-animation, let the running loop repaint). */
   function refit() {
     ribbonPathsRef.current = ribbonPathsRef.current.map(() => null);
-    if ((status !== "ready" && status !== "writing") || offsetsRef.current.length === 0) return;
+    if (
+      (status !== "ready" && status !== "writing" && status !== "paused") ||
+      offsetsRef.current.length === 0
+    )
+      return;
     layout(offsetsRef.current);
     clearCanvas();
     penRef.current.drawn = 0;
-    if (status !== "ready") return;
+    if (status === "writing") return; // the running loop repaints
     const canvas = canvasRef.current;
     const total =
       rendererRef.current === "ribbon"
         ? (ribbonRef.current?.totalPoints ?? 0)
         : stepsRef.current.length;
     if (!canvas || total === 0) return;
+    // Paused repaints stop where the pen stopped; finished lines in full.
+    const limit =
+      status === "paused" ? Math.min(Math.floor(penRef.current.progress), total) : total;
     const context = canvas.getContext("2d")!;
-    if (rendererRef.current === "ribbon") paintRibbon(context, total);
-    else paintPen(context, total);
+    if (rendererRef.current === "ribbon") paintRibbon(context, limit);
+    else paintPen(context, limit);
   }
 
   function clearCanvas() {
@@ -487,9 +507,22 @@ export default function App() {
     workerRef.current?.postMessage(request);
   }
 
-  /** Rewind the finished line and let the pen write it again. */
-  function replay() {
+  /** Play/pause: freeze the pen mid-line, pick up where it stopped, or —
+   * once the line is finished — write it again from the start. */
+  function togglePlayback() {
     if (offsetsRef.current.length === 0) return;
+    if (status === "writing") {
+      cancelAnimationFrame(rafRef.current);
+      setStatus("paused");
+      return;
+    }
+    if (status === "paused") {
+      penRef.current.lastTick = performance.now();
+      setStatus("writing");
+      rafRef.current = requestAnimationFrame(tick);
+      return;
+    }
+    // Finished line: rewind and let the pen write it again.
     clearCanvas();
     penRef.current = { drawn: 0, progress: 0, lastTick: performance.now() };
     setStatus("writing");
@@ -503,7 +536,7 @@ export default function App() {
   const fmt = (value: number) => String(Number(value.toFixed(2)));
 
   const swatchBase =
-    "size-7 shrink-0 cursor-pointer rounded-full border border-foreground/20 sm:size-5";
+    "size-6 shrink-0 cursor-pointer rounded-full border border-foreground/20 sm:size-5";
   const swatchSelected = "ring-2 ring-foreground ring-offset-2 ring-offset-card";
 
   return (
@@ -518,27 +551,47 @@ export default function App() {
       <div className="relative">
         <canvas
           ref={canvasRef}
-          className="block h-[clamp(150px,24vh,210px)] w-full rounded-xl border bg-card shadow-xs sm:h-[clamp(200px,38vh,300px)]"
+          className="block h-[clamp(150px,24vh,210px)] w-full rounded-3xl border bg-card shadow-xs sm:h-[clamp(200px,38vh,300px)]"
+          style={paper ? { background: paper } : undefined}
         />
-        {(status === "ready" || status === "writing") && offsetsRef.current.length > 0 && (
-          <Button
-            variant="outline"
-            size="icon"
-            className="absolute right-3 bottom-3 rounded-full bg-card/90"
-            title="replay"
-            aria-label="replay"
-            onClick={replay}
-          >
-            <RotateCcwIcon />
-          </Button>
-        )}
+        {/* Status lives on the paper itself, out of the ink's usual way.
+            Width stops short of the replay button in the other corner. */}
+        <p
+          role="status"
+          className={cn(
+            "pointer-events-none absolute bottom-3.5 left-5 max-w-[calc(100%-5.5rem)] truncate text-sm",
+            status === "error" ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {note ||
+            (status === "thinking"
+              ? "thinking…"
+              : status === "writing"
+                ? "writing…"
+                : status === "paused"
+                  ? "paused"
+                  : "")}
+        </p>
+        {(status === "ready" || status === "writing" || status === "paused") &&
+          offsetsRef.current.length > 0 && (
+            <Button
+              variant="outline"
+              size="icon"
+              className="absolute right-3 bottom-3 rounded-full bg-card/90"
+              title={status === "writing" ? "pause" : "play"}
+              aria-label={status === "writing" ? "pause" : "play"}
+              onClick={togglePlayback}
+            >
+              {status === "writing" ? <PauseIcon /> : <PlayIcon />}
+            </Button>
+          )}
       </div>
 
       <div className="flex flex-wrap gap-2">
         <div className="relative min-w-0 flex-1 basis-56">
           <Input
             ref={textInputRef}
-            className={cn(text && "pr-8")}
+            className={cn("rounded-full pl-3.5", text && "pr-9")}
             value={text}
             maxLength={descriptor?.maxTextLength ?? 75}
             onChange={(event) => setText(event.target.value)}
@@ -549,7 +602,7 @@ export default function App() {
             <button
               type="button"
               aria-label="clear text"
-              className="absolute top-1/2 right-1 -translate-y-1/2 cursor-pointer rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+              className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
               onClick={() => {
                 setText("");
                 textInputRef.current?.focus();
@@ -560,7 +613,7 @@ export default function App() {
           )}
         </div>
         <Button
-          className="max-sm:flex-1"
+          className="rounded-full px-4 max-sm:flex-1"
           onClick={write}
           disabled={busy}
           title="every write is a new take"
@@ -594,7 +647,7 @@ export default function App() {
           <div className="border-t px-4 pt-3.5 pb-4">
             <div className="grid gap-x-10 gap-y-3.5 sm:grid-cols-2">
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                <span className="w-16 shrink-0 max-sm:hidden">model</span>
+                <span className="w-16 shrink-0">model</span>
                 <Segmented
                   aria-label="model"
                   options={[
@@ -606,7 +659,7 @@ export default function App() {
                 />
               </div>
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                <span className="w-16 shrink-0 max-sm:hidden">style</span>
+                <span className="w-16 shrink-0">style</span>
                 <StylePicker options={options} value={style} onChange={setStyle} />
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -661,15 +714,16 @@ export default function App() {
                   onChange={setStroke}
                 />
               </div>
-              {/* On phones the labelled row can't fit eight fixed-size
-                  swatches, so the label hides and the palette spans the
-                  row (the radiogroup keeps its accessible name). */}
-              <div className="flex items-center gap-3 text-sm text-muted-foreground sm:col-span-2">
-                <span className="w-16 shrink-0 max-sm:hidden">ink</span>
+              {/* Eight fixed-size swatches only fit beside their label in a
+                  full-width (md) grid column; below that each palette takes
+                  a whole row, and on phones the swatches shrink a step so
+                  the label still fits. */}
+              <div className="flex items-center gap-3 text-sm text-muted-foreground sm:col-span-2 md:col-span-1">
+                <span className="w-16 shrink-0">ink</span>
                 <div
                   role="radiogroup"
                   aria-label="ink color"
-                  className="flex flex-1 items-center justify-between gap-2 sm:flex-none sm:justify-start"
+                  className="flex flex-1 items-center justify-between gap-1 sm:flex-none sm:justify-start sm:gap-2"
                 >
                   {INK_COLORS.map((swatch) => (
                     <button
@@ -702,20 +756,48 @@ export default function App() {
                   />
                 </div>
               </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground sm:col-span-2 md:col-span-1">
+                <span className="w-16 shrink-0">paper</span>
+                <div
+                  role="radiogroup"
+                  aria-label="paper color"
+                  className="flex flex-1 items-center justify-between gap-1 sm:flex-none sm:justify-start sm:gap-2"
+                >
+                  {PAPER_COLORS.map((swatch) => (
+                    <button
+                      key={swatch.name}
+                      type="button"
+                      role="radio"
+                      aria-checked={swatch.value === paper}
+                      aria-label={`paper color: ${swatch.name}`}
+                      title={swatch.name}
+                      className={cn(
+                        swatchBase,
+                        swatch.value === null && "swatch-none",
+                        swatch.value === paper && swatchSelected,
+                      )}
+                      style={swatch.value ? { background: swatch.value } : undefined}
+                      onClick={() => setPaper(swatch.value)}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    className={cn(swatchBase, "swatch-custom", paper === customPaper && swatchSelected)}
+                    aria-label="paper color: custom"
+                    title="custom color"
+                    value={customPaper}
+                    onClick={() => setPaper(customPaper)}
+                    onChange={(event) => {
+                      setCustomPaper(event.target.value);
+                      setPaper(event.target.value);
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </CollapsibleContent>
       </Collapsible>
-
-      <p
-        className={cn(
-          "min-h-5 text-sm",
-          status === "error" ? "text-destructive" : "text-muted-foreground",
-        )}
-      >
-        {note ||
-          (status === "thinking" ? "thinking…" : status === "writing" ? "writing…" : " ")}
-      </p>
 
       <footer className="text-xs text-muted-foreground/80">
         seed {seed} · no servers involved · <span className="italic">work in progress</span>
