@@ -155,47 +155,47 @@ export default function ExportDialog({ text, getOffsets, getStyle }: ExportDialo
   function group(title: string, options: FormatOption[]) {
     return (
       <div className="flex flex-col gap-1.5">
-        <span className="px-0.5 text-[11px] tracking-wide text-muted-foreground uppercase">
+        <span className="px-2 text-[11px] tracking-wide text-muted-foreground uppercase">
           {title}
         </span>
-        {options.map((option) => {
-          const unsupported = option.format === "mp4" && !canVideo;
-          const active = option.format === format;
-          const Icon = option.icon;
-          return (
-            <button
-              key={option.format}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              aria-label={`export as ${option.label}`}
-              disabled={busy || unsupported}
-              className={cn(
-                "flex cursor-pointer items-center gap-3 rounded-xl border p-2.5 text-left outline-none transition-colors",
-                "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-                active ? "border-ring/60 bg-accent" : "hover:bg-accent/50",
-                (busy || unsupported) && "pointer-events-none opacity-50",
-              )}
-              onClick={() => setFormat(option.format)}
-            >
-              <span
+        <div className="flex flex-col gap-0.5 rounded-2xl bg-muted/50 p-1">
+          {options.map((option) => {
+            const unsupported = option.format === "mp4" && !canVideo;
+            const active = option.format === format;
+            const Icon = option.icon;
+            return (
+              <button
+                key={option.format}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                aria-label={`export as ${option.label}`}
+                disabled={busy || unsupported}
                 className={cn(
-                  "flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted",
-                  active ? "text-foreground" : "text-muted-foreground",
+                  "flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left outline-none transition-all",
+                  "focus-visible:ring-2 focus-visible:ring-ring/50",
+                  active ? "bg-card shadow-sm dark:bg-muted" : "hover:bg-card/60 dark:hover:bg-muted/50",
+                  (busy || unsupported) && "pointer-events-none opacity-50",
                 )}
+                onClick={() => setFormat(option.format)}
               >
-                <Icon className="size-4.5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-medium">{option.label}</span>
-                <span className="block truncate text-xs text-muted-foreground">
-                  {unsupported ? "not supported in this browser" : option.description}
+                <Icon
+                  className={cn(
+                    "size-4.5 shrink-0 transition-colors",
+                    active ? "text-foreground" : "text-muted-foreground",
+                  )}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">{option.label}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {unsupported ? "not supported in this browser" : option.description}
+                  </span>
                 </span>
-              </span>
-              <span className="text-[11px] text-muted-foreground/70">{option.extension}</span>
-            </button>
-          );
-        })}
+                <span className="text-[11px] text-muted-foreground/70">{option.extension}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     );
   }

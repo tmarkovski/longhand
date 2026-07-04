@@ -3,6 +3,8 @@ dist/
 coverage/
 .DS_Store
 *.log
+*.tsbuildinfo
+apps/web/smoke.png
 .env
 .env.*
 scratch/

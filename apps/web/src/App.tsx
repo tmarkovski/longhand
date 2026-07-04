@@ -1,7 +1,16 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
-import { ChevronDownIcon, PauseIcon, PenLineIcon, PlayIcon, XIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  MonitorIcon,
+  MoonIcon,
+  PauseIcon,
+  PenLineIcon,
+  PlayIcon,
+  SunIcon,
+  XIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -39,6 +48,13 @@ const PEN_WIDTH_PER_SCALE = 2.2 / 1.6;
 // this, and an SVG export would omit fill/stroke entirely so the paths
 // inherit from wherever they're embedded.
 const DEFAULT_INK = "#1c1c28";
+const DEFAULT_INK_DARK = "#ececf1";
+
+/** "No color" means the page's ink, which flips with the theme. Read at
+ * paint time; the theme toggle triggers a repaint when the class changes. */
+function defaultInk(): string {
+  return document.documentElement.classList.contains("dark") ? DEFAULT_INK_DARK : DEFAULT_INK;
+}
 
 // Thickness is a multiplier on the renderers' tuned ink width: 1x sits in
 // the middle of the slider (0.5–1.5), so default means "as tuned".
@@ -138,7 +154,7 @@ function Segmented<T extends string>({
       ref={groupRef}
       role="radiogroup"
       aria-label={ariaLabel}
-      className="relative inline-flex rounded-full border border-foreground/40 p-0.5 max-sm:flex-1"
+      className="relative inline-flex rounded-full bg-white/80 p-0.5 shadow-xs max-sm:flex-1 dark:bg-background/40"
     >
       {pill && (
         <span
@@ -165,6 +181,69 @@ function Segmented<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+type Theme = "system" | "light" | "dark";
+
+const THEME_ICONS = { system: MonitorIcon, light: SunIcon, dark: MoonIcon } as const;
+
+/** One button cycling system → light → dark; the icon is the state. The
+ * saved choice is applied before first paint by the inline script in
+ * index.html, so this only has to keep the class and storage in sync.
+ * `onApply` fires after the class changes, so the canvas can repaint
+ * theme-dependent ink. */
+function ThemeToggle({ onApply }: { onApply?: () => void }) {
+  // Ref-routed so the media listener never calls a stale closure.
+  const onApplyRef = useRef(onApply);
+  onApplyRef.current = onApply;
+  const [theme, setTheme] = useState<Theme>(() => {
+    try {
+      const saved = localStorage.getItem("theme");
+      return saved === "light" || saved === "dark" ? saved : "system";
+    } catch {
+      return "system";
+    }
+  });
+
+  useEffect(() => {
+    const media = matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      document.documentElement.classList.toggle(
+        "dark",
+        theme === "dark" || (theme === "system" && media.matches),
+      );
+      onApplyRef.current?.();
+    };
+    apply();
+    if (theme !== "system") return;
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [theme]);
+
+  function cycle() {
+    const next: Theme = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
+    setTheme(next);
+    try {
+      if (next === "system") localStorage.removeItem("theme");
+      else localStorage.setItem("theme", next);
+    } catch {
+      // Storage may be unavailable (private mode); the toggle still works
+      // for the session.
+    }
+  }
+
+  const Icon = THEME_ICONS[theme];
+  return (
+    <button
+      type="button"
+      className="cursor-pointer rounded-full p-1 transition-colors hover:text-foreground"
+      title={`theme: ${theme}`}
+      aria-label={`theme: ${theme}`}
+      onClick={cycle}
+    >
+      <Icon className="size-3.5" aria-hidden />
+    </button>
   );
 }
 
@@ -386,7 +465,7 @@ export default function App() {
   function paintPen(context: CanvasRenderingContext2D, limit: number) {
     const steps = stepsRef.current;
     const pen = penRef.current;
-    const ink = inkRef.current.color ?? DEFAULT_INK;
+    const ink = inkRef.current.color ?? defaultInk();
     context.strokeStyle = ink;
     context.fillStyle = ink;
     const mid = (a: PenStep, b: PenStep): [number, number] => [(a.x + b.x) / 2, (a.y + b.y) / 2];
@@ -431,7 +510,7 @@ export default function App() {
     const line = ribbonRef.current;
     if (!line) return;
     context.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-    context.fillStyle = inkRef.current.color ?? DEFAULT_INK;
+    context.fillStyle = inkRef.current.color ?? defaultInk();
     let remaining = limit;
     for (let index = 0; index < line.strokes.length && remaining > 0; index++) {
       const points = line.strokes[index]!;
@@ -544,7 +623,7 @@ export default function App() {
   function exportStyle(): ExportStyle {
     return {
       renderer: rendererRef.current,
-      ink: inkRef.current.color ?? DEFAULT_INK,
+      ink: inkRef.current.color ?? defaultInk(),
       paper,
       penBasePerScale:
         PEN_WIDTH_PER_SCALE * inkRef.current.thickness * inkWeightRef.current.pen,
@@ -580,7 +659,7 @@ export default function App() {
           the playback control. The strip's height is fixed so the canvas
           doesn't shift when the button comes and goes. */}
       <div
-        className="overflow-hidden rounded-3xl border border-foreground/75 bg-card shadow-xl"
+        className="overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-card"
         style={paper ? { background: paper } : undefined}
       >
         <canvas
@@ -682,15 +761,15 @@ export default function App() {
       <Collapsible
         open={optionsOpen}
         onOpenChange={setOptionsOpen}
-        className="rounded-3xl border bg-muted shadow-xs"
+        className="rounded-3xl bg-muted shadow-sm dark:bg-muted/50"
       >
         <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm">
           <span className="font-medium">options</span>
           <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
             {descriptor?.label ?? "loading…"} · {styleLabel} · {stroke} ·{" "}
             <span
-              className="inline-block size-[11px] rounded-full border border-foreground/20 align-[-1.5px]"
-              style={{ background: color ?? DEFAULT_INK }}
+              className="inline-block size-[11px] rounded-full border border-foreground/20 bg-foreground align-[-1.5px]"
+              style={color ? { background: color } : undefined}
               aria-hidden
             />{" "}
             · legibility {legibility} · thickness {fmt(thickness)}× · speed {fmt(speed)}×
@@ -856,8 +935,11 @@ export default function App() {
         </CollapsibleContent>
       </Collapsible>
 
-      <footer className="text-xs text-muted-foreground/80">
-        seed {seed} · no servers involved · <span className="italic">work in progress</span>
+      <footer className="flex items-center gap-1 text-xs text-muted-foreground/80">
+        <span>
+          seed {seed} · no servers involved · <span className="italic">work in progress</span>
+        </span>
+        <ThemeToggle onApply={refit} />
       </footer>
     </main>
   );

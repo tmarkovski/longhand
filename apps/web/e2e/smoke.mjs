@@ -24,16 +24,19 @@ const fail = (message) => {
   process.exit(1);
 };
 
+// The canvas bitmap is transparent everywhere the pen hasn't touched (the
+// paper color is the card behind it), so opaque pixels are ink regardless
+// of the ink color.
 async function inkPixels() {
   return page.evaluate(() => {
     const canvas = document.querySelector("canvas");
     const context = canvas.getContext("2d");
     const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-    let dark = 0;
+    let ink = 0;
     for (let i = 0; i < data.length; i += 4) {
-      if (data[i + 3] > 200 && data[i] < 100) dark++;
+      if (data[i + 3] > 200) ink++;
     }
-    return dark;
+    return ink;
   });
 }
 
@@ -124,9 +127,8 @@ const styledInk = await inkPixels();
 if ((await page.locator("footer").textContent()) === seedBeforeReplay)
   fail("write reused the previous seed — every write should reshuffle");
 
-// Ink settings restyle the finished line without a rewrite: pick blue
-// (red channel low, so inkPixels still counts it) and max thickness, then
-// confirm the repaint kept — and fattened — the ink.
+// Ink settings restyle the finished line without a rewrite: pick blue and
+// max thickness, then confirm the repaint kept — and fattened — the ink.
 await page.getByRole("radio", { name: "ink color: blue" }).click();
 await page.getByLabel("thickness").press("End");
 await page.waitForTimeout(1_000);

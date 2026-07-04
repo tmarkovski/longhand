@@ -106,12 +106,12 @@ export default function StylePicker({ options, value, onChange }: StylePickerPro
           preview shrinks first), so a longer style label can't wrap the
           picker onto its own line. */}
       <DialogTrigger
-        className="style-picker-trigger flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-lg border border-foreground/40 bg-transparent py-1 pr-2 pl-2.5 text-sm outline-none transition-colors select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="style-picker-trigger flex h-8 min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-full bg-white/80 py-1 pr-2.5 pl-3 text-sm shadow-xs outline-none transition-colors select-none focus-visible:ring-2 focus-visible:ring-ring/50 dark:bg-background/40"
         aria-label={`handwriting style: ${selected.label}`}
       >
         {selected.preview && (
           <img
-            className="h-5 w-auto min-w-0 flex-1 object-contain object-left"
+            className="h-5 w-auto min-w-0 flex-1 object-contain object-left dark:invert"
             src={selected.preview}
             alt=""
             draggable={false}
@@ -150,7 +150,7 @@ export default function StylePicker({ options, value, onChange }: StylePickerPro
             >
               {option.preview && (
                 <img
-                  className="block h-[38px] w-full object-contain object-left"
+                  className="block h-[38px] w-full object-contain object-left dark:invert"
                   src={option.preview}
                   alt=""
                   draggable={false}
