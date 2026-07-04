@@ -1,6 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
+import { ChevronDownIcon, RotateCcwIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 import StylePicker, { styleOptions } from "./StylePicker.js";
 import type {
   EngineDescriptor,
@@ -23,9 +40,25 @@ const PEN_WIDTH_PER_SCALE = 2.2 / 1.6;
 // inherit from wherever they're embedded.
 const DEFAULT_INK = "#1c1c28";
 
-// Middle of the thickness slider (0.3–2.0) and a brisk-but-watchable pace.
-const DEFAULT_THICKNESS = 1.15;
+// Thickness is a multiplier on the renderers' tuned ink width: 1x sits in
+// the middle of the slider (0.5–1.5), so default means "as tuned".
+const DEFAULT_THICKNESS = 1.0;
+// A brisk-but-watchable writing pace.
 const DEFAULT_SPEED = 1.5;
+
+/** Ink weight per engine + stroke combination, multiplied into thickness.
+ * Normalizes how heavy 1x looks across combinations — the reference ribbon
+ * width reads far lighter than the pen on the calligrapher engine, so it
+ * gets a boost (and real boldness at the top of the slider). */
+const INK_WEIGHT: Record<EngineId, Record<RendererKind, number>> = {
+  graves: { pen: 1, ribbon: 1 },
+  calligrapher: { pen: 1, ribbon: 2 },
+};
+
+/** Sampling bias behind each legibility setting: higher biases the models
+ * toward their most probable strokes, so the hand gets neater. */
+const LEGIBILITY = { low: 0.2, normal: 0.6, high: 0.9 } as const;
+type Legibility = keyof typeof LEGIBILITY;
 
 /** Ink palette; value null is "no color" (default ink / inherit). */
 const INK_COLORS: ReadonlyArray<{ name: string; value: string | null }> = [
@@ -73,6 +106,7 @@ export default function App() {
   const alphabetRef = useRef<Set<string>>(new Set());
   const rendererRef = useRef<RendererKind>("pen");
   const ribbonFactorRef = useRef(1);
+  const inkWeightRef = useRef(INK_WEIGHT.calligrapher);
   // Paint-time copy of the ink settings, so the rAF loop sees changes
   // without re-subscribing.
   const inkRef = useRef<{ color: string | null; thickness: number }>({
@@ -83,7 +117,7 @@ export default function App() {
   const [status, setStatus] = useState<Status>("loading");
   const [note, setNote] = useState("loading the calligrapher model (2.6 MB, one time)…");
   const [text, setText] = useState("a line of ink, thinking as it goes");
-  const [bias, setBias] = useState(0.75);
+  const [legibility, setLegibility] = useState<Legibility>("normal");
   const [style, setStyle] = useState<number | null>(null);
   const [engine, setEngine] = useState<EngineId>("calligrapher");
   const [descriptor, setDescriptor] = useState<EngineDescriptor | null>(null);
@@ -105,6 +139,7 @@ export default function App() {
           setDescriptor(message.engine);
           alphabetRef.current = new Set(message.engine.alphabet);
           ribbonFactorRef.current = message.engine.ribbonWidthFactor;
+          inkWeightRef.current = INK_WEIGHT[message.engine.id];
           // Each engine starts in its native ink look.
           rendererRef.current = message.engine.renderer;
           setStroke(message.engine.renderer);
@@ -247,7 +282,7 @@ export default function App() {
     // The pen look: smooth, level the baseline, then speed-based widths.
     const { placed, scale } = fitToCanvas(polishLine(offsetsToLine(offsets)));
     const widths = penWidths(placed, {
-      base: PEN_WIDTH_PER_SCALE * scale * inkRef.current.thickness,
+      base: PEN_WIDTH_PER_SCALE * scale * inkRef.current.thickness * inkWeightRef.current.pen,
     });
     stepsRef.current = placed.strokes.flatMap((stroke, strokeIndex) =>
       stroke.points.map(([x, y], pointIndex) => ({
@@ -319,7 +354,10 @@ export default function App() {
         const d = ribbonPath(
           points.slice(0, take),
           line.scale,
-          RIBBON_WIDTH * ribbonFactorRef.current * inkRef.current.thickness,
+          RIBBON_WIDTH *
+            ribbonFactorRef.current *
+            inkRef.current.thickness *
+            inkWeightRef.current.ribbon,
         );
         if (!d) continue;
         path = new Path2D(d);
@@ -382,7 +420,7 @@ export default function App() {
       type: "write",
       engine,
       text: cleaned,
-      bias,
+      bias: LEGIBILITY[legibility],
       style,
       seed: nextSeed,
     };
@@ -404,170 +442,239 @@ export default function App() {
   const styleLabel = options.find((option) => option.id === style)?.label ?? "style";
   const fmt = (value: number) => String(Number(value.toFixed(2)));
 
+  const swatchBase =
+    "size-7 shrink-0 cursor-pointer rounded-full border border-foreground/20 sm:size-5";
+  const swatchSelected = "ring-2 ring-foreground ring-offset-2 ring-offset-card";
+
   return (
-    <main className="page">
+    <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-7 sm:px-6 sm:py-10">
       <header>
-        <h1>Longhand</h1>
-        <p className="tagline">handwriting, alive. every stroke generated in your browser</p>
+        <h1 className="text-2xl font-semibold tracking-tight">Longhand</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          handwriting, alive. every stroke generated in your browser
+        </p>
       </header>
 
-      <div className="paper-wrap">
-        <canvas ref={canvasRef} className="paper" />
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          className="block h-[clamp(150px,24vh,210px)] w-full rounded-xl border bg-card shadow-xs sm:h-[clamp(200px,38vh,300px)]"
+        />
         {(status === "ready" || status === "writing") && offsetsRef.current.length > 0 && (
-          <button
-            type="button"
-            className="replay"
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute right-3 bottom-3 rounded-full bg-card/90"
             title="replay"
             aria-label="replay"
             onClick={replay}
           >
-            ↻
-          </button>
+            <RotateCcwIcon />
+          </Button>
         )}
       </div>
 
-      <div className="controls">
-        <input
-          className="text"
+      <div className="flex flex-wrap gap-2">
+        <Input
+          className="min-w-0 flex-1 basis-56"
           value={text}
           maxLength={descriptor?.maxTextLength ?? 75}
           onChange={(event) => setText(event.target.value)}
           onKeyDown={(event) => event.key === "Enter" && !busy && write()}
           placeholder="type something to write…"
         />
-        <button onClick={write} disabled={busy} title="every write is a new take">
+        <Button
+          className="max-sm:flex-1"
+          onClick={write}
+          disabled={busy}
+          title="every write is a new take"
+        >
           write
-        </button>
+        </Button>
       </div>
 
-      <section className="options">
-        <button
-          type="button"
-          className="options-toggle"
-          aria-expanded={optionsOpen}
-          aria-controls="options-panel"
-          onClick={() => setOptionsOpen((open) => !open)}
-        >
-          <span className="options-title">options</span>
-          <span className="options-summary">
+      <Collapsible
+        open={optionsOpen}
+        onOpenChange={setOptionsOpen}
+        className="rounded-xl border bg-card shadow-xs"
+      >
+        <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm">
+          <span className="font-medium">options</span>
+          <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
             {descriptor?.label ?? "loading…"} · {styleLabel} · {stroke} ·{" "}
-            <span className="ink-dot" style={{ background: color ?? DEFAULT_INK }} aria-hidden />{" "}
-            · legibility {fmt(bias)} · thickness {fmt(thickness)}× · speed {fmt(speed)}×
+            <span
+              className="inline-block size-[11px] rounded-full border border-foreground/20 align-[-1.5px]"
+              style={{ background: color ?? DEFAULT_INK }}
+              aria-hidden
+            />{" "}
+            · legibility {legibility} · thickness {fmt(thickness)}× · speed {fmt(speed)}×
           </span>
-          <span className="options-caret" aria-hidden>
-            {optionsOpen ? "▴" : "▾"}
-          </span>
-        </button>
-        {optionsOpen && (
-          <div className="options-panel" id="options-panel">
-            <div className="options-row">
-              <select
-                className="engine-select"
+          <ChevronDownIcon
+            className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-180"
+            aria-hidden
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="flex flex-col gap-4 border-t px-4 pt-3.5 pb-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
                 value={engine}
-                onChange={(event) => switchEngine(event.target.value as EngineId)}
-                title="handwriting engine"
-                aria-label="handwriting engine"
+                onValueChange={(value) => switchEngine(value as EngineId)}
+                items={{ graves: "longhand engine", calligrapher: "calligrapher engine" }}
               >
-                <option value="graves">longhand engine</option>
-                <option value="calligrapher">calligrapher engine</option>
-              </select>
+                <SelectTrigger
+                  className="engine-select max-sm:w-full"
+                  aria-label="handwriting engine"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="graves">longhand engine</SelectItem>
+                  <SelectItem value="calligrapher">calligrapher engine</SelectItem>
+                </SelectContent>
+              </Select>
               <StylePicker options={options} value={style} onChange={setStyle} />
             </div>
-            <div className="settings">
-              <label className="slider">
-                <span className="slider-name">legibility</span>
-                <input
-                  type="range"
-                  min={0.15}
-                  max={1.0}
-                  step={0.05}
-                  value={bias}
-                  onChange={(event) => setBias(Number(event.target.value))}
-                />
-              </label>
-              <label className="slider">
-                <span className="slider-name">thickness</span>
-                <input
-                  type="range"
-                  min={0.3}
-                  max={2.0}
+
+            <div className="grid gap-x-10 gap-y-3.5 sm:grid-cols-2">
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="w-16 shrink-0">legibility</span>
+                <div
+                  role="radiogroup"
+                  aria-label="legibility"
+                  className="inline-flex rounded-lg border border-input p-0.5 max-sm:flex-1"
+                >
+                  {(Object.keys(LEGIBILITY) as Legibility[]).map((level) => (
+                    <button
+                      key={level}
+                      type="button"
+                      role="radio"
+                      aria-checked={legibility === level}
+                      className={cn(
+                        "cursor-pointer rounded-md px-3 py-1 text-sm transition-colors max-sm:flex-1",
+                        legibility === level
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      onClick={() => setLegibility(level)}
+                    >
+                      {level}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="w-16 shrink-0">thickness</span>
+                <Slider
+                  className="min-w-0 flex-1"
+                  aria-label="thickness"
+                  min={0.5}
+                  max={1.5}
                   step={0.05}
                   value={thickness}
-                  onChange={(event) => setThickness(Number(event.target.value))}
+                  onValueChange={(value) => setThickness(value as number)}
                 />
-              </label>
-              <label className="slider">
-                <span className="slider-name">speed</span>
-                <input
-                  type="range"
+              </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="w-16 shrink-0">speed</span>
+                <Slider
+                  className="min-w-0 flex-1"
+                  aria-label="speed"
                   min={0.25}
                   max={4}
                   step={0.25}
                   value={speed}
-                  onChange={(event) => {
-                    const next = Number(event.target.value);
+                  onValueChange={(value) => {
+                    const next = value as number;
                     setSpeed(next);
                     speedRef.current = next;
                   }}
                 />
-              </label>
-              <div className="stroke-toggle" role="radiogroup" aria-label="stroke type">
-                {(["pen", "ribbon"] as const).map((kind) => (
-                  <button
-                    key={kind}
-                    type="button"
-                    role="radio"
-                    aria-checked={stroke === kind}
-                    className={"stroke-option" + (stroke === kind ? " selected" : "")}
-                    onClick={() => setStroke(kind)}
-                  >
-                    {kind}
-                  </button>
-                ))}
               </div>
-              <div className="palette" role="radiogroup" aria-label="ink color">
-                {INK_COLORS.map((swatch) => (
-                  <button
-                    key={swatch.name}
-                    type="button"
-                    role="radio"
-                    aria-checked={swatch.value === color}
-                    aria-label={`ink color: ${swatch.name}`}
-                    title={swatch.name}
-                    className={
-                      "swatch" +
-                      (swatch.value === null ? " swatch-none" : "") +
-                      (swatch.value === color ? " selected" : "")
-                    }
-                    style={swatch.value ? { background: swatch.value } : undefined}
-                    onClick={() => setColor(swatch.value)}
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="w-16 shrink-0">stroke</span>
+                <div
+                  role="radiogroup"
+                  aria-label="stroke type"
+                  className="inline-flex rounded-lg border border-input p-0.5 max-sm:flex-1"
+                >
+                  {(["pen", "ribbon"] as const).map((kind) => (
+                    <button
+                      key={kind}
+                      type="button"
+                      role="radio"
+                      aria-checked={stroke === kind}
+                      className={cn(
+                        "cursor-pointer rounded-md px-3 py-1 text-sm transition-colors max-sm:flex-1",
+                        stroke === kind
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      onClick={() => setStroke(kind)}
+                    >
+                      {kind}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* On phones the labelled row can't fit eight fixed-size
+                  swatches, so the label hides and the palette spans the
+                  row (the radiogroup keeps its accessible name). */}
+              <div className="flex items-center gap-3 text-sm text-muted-foreground sm:col-span-2">
+                <span className="w-16 shrink-0 max-sm:hidden">ink</span>
+                <div
+                  role="radiogroup"
+                  aria-label="ink color"
+                  className="flex flex-1 items-center justify-between gap-2 sm:flex-none sm:justify-start"
+                >
+                  {INK_COLORS.map((swatch) => (
+                    <button
+                      key={swatch.name}
+                      type="button"
+                      role="radio"
+                      aria-checked={swatch.value === color}
+                      aria-label={`ink color: ${swatch.name}`}
+                      title={swatch.name}
+                      className={cn(
+                        swatchBase,
+                        swatch.value === null && "swatch-none",
+                        swatch.value === color && swatchSelected,
+                      )}
+                      style={swatch.value ? { background: swatch.value } : undefined}
+                      onClick={() => setColor(swatch.value)}
+                    />
+                  ))}
+                  <input
+                    type="color"
+                    className={cn(swatchBase, "swatch-custom", color === customColor && swatchSelected)}
+                    aria-label="ink color: custom"
+                    title="custom color"
+                    value={customColor}
+                    onClick={() => setColor(customColor)}
+                    onChange={(event) => {
+                      setCustomColor(event.target.value);
+                      setColor(event.target.value);
+                    }}
                   />
-                ))}
-                <input
-                  type="color"
-                  className={"swatch swatch-custom" + (color === customColor ? " selected" : "")}
-                  aria-label="ink color: custom"
-                  title="custom color"
-                  value={customColor}
-                  onClick={() => setColor(customColor)}
-                  onChange={(event) => {
-                    setCustomColor(event.target.value);
-                    setColor(event.target.value);
-                  }}
-                />
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </section>
+        </CollapsibleContent>
+      </Collapsible>
 
-      <p className={`note ${status === "error" ? "error" : ""}`}>
+      <p
+        className={cn(
+          "min-h-5 text-sm",
+          status === "error" ? "text-destructive" : "text-muted-foreground",
+        )}
+      >
         {note ||
           (status === "thinking" ? "thinking…" : status === "writing" ? "writing…" : " ")}
       </p>
 
-      <footer>
-        seed {seed} · no servers involved · <span className="wip">work in progress</span>
+      <footer className="text-xs text-muted-foreground/80">
+        seed {seed} · no servers involved · <span className="italic">work in progress</span>
       </footer>
     </main>
   );

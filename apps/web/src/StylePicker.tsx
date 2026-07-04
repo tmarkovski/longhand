@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronDownIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { EngineDescriptor } from "./protocol.js";
 
 /**
@@ -117,42 +119,65 @@ export default function StylePicker({ options, value, onChange }: StylePickerPro
   }
 
   return (
-    <div className="style-picker" ref={rootRef}>
+    <div className="relative max-sm:w-full" ref={rootRef}>
       <button
         type="button"
-        className="style-picker-trigger"
+        className="style-picker-trigger flex h-8 w-full items-center gap-2.5 rounded-lg border border-input bg-transparent py-1 pr-2 pl-2.5 text-sm outline-none transition-colors select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 sm:w-auto"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={`handwriting style: ${selected.label}`}
         onClick={() => (open ? setOpen(false) : openPanel())}
         onKeyDown={onKeyDown}
       >
-        {selected.preview && <img src={selected.preview} alt="" draggable={false} />}
-        <span className="style-picker-name">{selected.label}</span>
-        <span className="style-picker-caret" aria-hidden>
-          ▾
+        {selected.preview && (
+          <img
+            className="h-5 w-[150px] object-contain object-left max-sm:w-auto max-sm:min-w-0 max-sm:flex-1"
+            src={selected.preview}
+            alt=""
+            draggable={false}
+          />
+        )}
+        <span className="text-[11px] whitespace-nowrap text-muted-foreground">
+          {selected.label}
         </span>
+        <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
       </button>
       {open && (
-        <ul className="style-picker-panel" role="listbox" ref={listRef}>
+        <ul
+          className="absolute bottom-[calc(100%+6px)] left-0 z-50 max-h-[42vh] w-full overflow-y-auto rounded-lg bg-popover p-1 text-popover-foreground shadow-md ring-1 ring-foreground/10 sm:w-[340px]"
+          role="listbox"
+          ref={listRef}
+        >
           {options.map((option, index) => (
             <li
               key={option.label}
               role="option"
               aria-selected={index === selectedIndex}
-              className={
-                "style-picker-option" +
-                (index === highlight ? " highlighted" : "") +
-                (index === selectedIndex ? " selected" : "")
-              }
+              className={cn(
+                "cursor-pointer rounded-md px-2.5 pt-2 pb-1.5",
+                index === highlight && "bg-accent",
+              )}
               onMouseEnter={() => setHighlight(index)}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => choose(index)}
             >
               {option.preview && (
-                <img src={option.preview} alt="" draggable={false} loading="lazy" />
+                <img
+                  className="block h-[34px] w-full object-contain object-left"
+                  src={option.preview}
+                  alt=""
+                  draggable={false}
+                  loading="lazy"
+                />
               )}
-              <span className="style-picker-name">{option.label}</span>
+              <span
+                className={cn(
+                  "mt-0.5 block text-[11px] whitespace-nowrap text-muted-foreground max-sm:text-right",
+                  index === selectedIndex && "font-semibold text-foreground",
+                )}
+              >
+                {option.label}
+              </span>
             </li>
           ))}
         </ul>
