@@ -571,7 +571,7 @@ export default function App() {
       <header>
         <h1 className="text-2xl font-semibold tracking-tight">Longhand</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          handwriting, alive. every stroke generated in your browser
+          AI handwriting synthesis in your browser. yours to export in any format, free
         </p>
       </header>
 
