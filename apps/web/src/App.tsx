@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
-import { ChevronDownIcon, PauseIcon, PlayIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, PauseIcon, PenLineIcon, PlayIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -61,12 +61,13 @@ const LEGIBILITY = { low: 0.2, normal: 0.6, high: 0.9 } as const;
 type Legibility = keyof typeof LEGIBILITY;
 
 /** Ink palette; value null is "no color" (default ink / inherit). */
+const RED_INK = "#b3261e";
 const INK_COLORS: ReadonlyArray<{ name: string; value: string | null }> = [
   { name: "no color", value: null },
   { name: "blue", value: "#1e4fd8" },
   { name: "teal", value: "#0e7490" },
   { name: "green", value: "#2f6b3a" },
-  { name: "red", value: "#b3261e" },
+  { name: "red", value: RED_INK },
   { name: "sepia", value: "#7a4a21" },
   { name: "violet", value: "#6d28d9" },
 ];
@@ -137,7 +138,7 @@ function Segmented<T extends string>({
       ref={groupRef}
       role="radiogroup"
       aria-label={ariaLabel}
-      className="relative inline-flex rounded-full border border-input p-0.5 max-sm:flex-1"
+      className="relative inline-flex rounded-full border border-foreground/40 p-0.5 max-sm:flex-1"
     >
       {pill && (
         <span
@@ -188,7 +189,7 @@ export default function App() {
   // Paint-time copy of the ink settings, so the rAF loop sees changes
   // without re-subscribing.
   const inkRef = useRef<{ color: string | null; thickness: number }>({
-    color: null,
+    color: RED_INK,
     thickness: DEFAULT_THICKNESS,
   });
 
@@ -200,7 +201,7 @@ export default function App() {
   const [engine, setEngine] = useState<EngineId>("calligrapher");
   const [descriptor, setDescriptor] = useState<EngineDescriptor | null>(null);
   const [seed, setSeed] = useState(42);
-  const [color, setColor] = useState<string | null>(null);
+  const [color, setColor] = useState<string | null>(RED_INK);
   const [customColor, setCustomColor] = useState(DEFAULT_INK);
   const [paper, setPaper] = useState<string | null>(null);
   const [customPaper, setCustomPaper] = useState("#f7f2e7");
@@ -563,7 +564,7 @@ export default function App() {
 
   const swatchBase =
     "size-6 shrink-0 cursor-pointer rounded-full border border-foreground/20 sm:size-5";
-  const swatchSelected = "ring-2 ring-foreground ring-offset-2 ring-offset-card";
+  const swatchSelected = "ring-2 ring-foreground ring-offset-2 ring-offset-muted";
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-7 sm:px-6 sm:py-10">
@@ -579,7 +580,7 @@ export default function App() {
           the playback control. The strip's height is fixed so the canvas
           doesn't shift when the button comes and goes. */}
       <div
-        className="overflow-hidden rounded-3xl border bg-card shadow-xs"
+        className="overflow-hidden rounded-3xl border border-foreground/75 bg-card shadow-xl"
         style={paper ? { background: paper } : undefined}
       >
         <canvas
@@ -627,11 +628,26 @@ export default function App() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-0 flex-1 basis-56">
+      {/* One ruled line, notebook-style: the border-b lives on the row so the
+        * input and the "write" action share the same baseline, like a line of
+        * writing with a note in the margin. */}
+      <div className="flex items-center gap-2 border-b border-foreground/75 transition-colors focus-within:border-foreground">
+        {/* The pen at the margin, dipped in the chosen ink (like the caret). */}
+        <PenLineIcon
+          className="size-4 shrink-0 text-muted-foreground"
+          style={{ color: color ?? undefined }}
+          aria-hidden
+        />
+        <div className="relative min-w-0 flex-1">
           <Input
             ref={textInputRef}
-            className={cn("rounded-full pl-3.5", text && "pr-9")}
+            className={cn(
+              "h-10 rounded-none border-0 bg-transparent px-0.5 text-base focus-visible:ring-0 md:text-base dark:bg-transparent",
+              text && "pr-8",
+            )}
+            // Caret in the chosen ink — the pen is "loaded". No color keeps
+            // the theme caret; the default ink is invisible on dark.
+            style={{ caretColor: color ?? undefined }}
             value={text}
             maxLength={descriptor?.maxTextLength ?? 75}
             onChange={(event) => setText(event.target.value)}
@@ -642,7 +658,7 @@ export default function App() {
             <button
               type="button"
               aria-label="clear text"
-              className="absolute top-1/2 right-1.5 -translate-y-1/2 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
+              className="absolute top-1/2 right-0 -translate-y-1/2 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
               onClick={() => {
                 setText("");
                 textInputRef.current?.focus();
@@ -653,7 +669,8 @@ export default function App() {
           )}
         </div>
         <Button
-          className="rounded-full px-4 max-sm:flex-1"
+          variant="ghost"
+          className="h-10 rounded-none px-2 text-foreground/70 underline-offset-[6px] hover:bg-transparent hover:text-foreground hover:underline dark:hover:bg-transparent"
           onClick={write}
           disabled={busy}
           title="every write is a new take"
@@ -665,7 +682,7 @@ export default function App() {
       <Collapsible
         open={optionsOpen}
         onOpenChange={setOptionsOpen}
-        className="rounded-xl border bg-card shadow-xs"
+        className="rounded-3xl border bg-muted shadow-xs"
       >
         <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm">
           <span className="font-medium">options</span>

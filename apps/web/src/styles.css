@@ -165,5 +165,5 @@
       var(--destructive) 56%,
       transparent 56%
     )
-    var(--card);
+    var(--muted);
 }
