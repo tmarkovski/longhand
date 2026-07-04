@@ -114,10 +114,15 @@ async function activate(id: EngineId): Promise<LoadedEngine> {
   return runtime;
 }
 
-// Default engine, ready as soon as the worker boots.
-activate("calligrapher").catch((error: unknown) =>
-  post({ type: "error", message: String(error) }),
-);
+// Default engine, ready as soon as the worker boots. Once it's usable, the
+// other model downloads and parses in the background so the first switch
+// is instant instead of a 15 MB wait. Quietly, and without caching a
+// failure: an explicit switch retries and surfaces any error itself.
+activate("calligrapher")
+  .catch((error: unknown) => post({ type: "error", message: String(error) }))
+  .then(() => {
+    load("graves").catch(() => loaded.delete("graves"));
+  });
 
 self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;

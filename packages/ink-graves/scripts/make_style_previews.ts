@@ -1,28 +1,40 @@
 /**
- * Static SVG previews for the app's style dropdown: the app's default phrase
+ * Static PNG previews for the app's style picker: the app's default phrase
  * written once per bundled style (plus freehand), generated with the same
  * engine and polish pipeline the app uses (TS engine → smooth + align →
  * speed-based pen widths), so a preview is pixel-for-pixel the hand the
- * user will get. Serialization is the shared `lineToSvg` pen renderer:
- * tightly cropped, transparent background, `currentColor` ink.
+ * user will get. The line is serialized through the shared `lineToSvg` pen
+ * renderer, then rasterized with resvg: tightly cropped, transparent
+ * background, the app's default ink color.
  *
  * Run: pnpm --filter @longhand/ink-graves exec tsx scripts/make_style_previews.ts [outDir]
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { Resvg } from "@resvg/resvg-js";
 import { offsetsToLine } from "@longhand/ink-core";
 import { lineToSvg, polishLine } from "@longhand/ink-render";
 import { GravesModel, STEPS_PER_CHARACTER } from "../src/engine.js";
 import { loadAssets } from "../test/helpers.js";
 
-// Same phrase and seed as the app's defaults (apps/web/src/App.tsx), but a
-// neater bias and a thinner pen: previews render small, where extra
-// legibility and a lighter line read better than the app defaults.
+// Same phrase and seed as the app's defaults (apps/web/src/App.tsx), with a
+// neater bias: previews render small, where extra legibility reads better.
 const TEXT = "a line of ink, thinking as it goes";
 const BIAS = 0.95;
 const SEED = 42;
 const SCALE = 1.6; // App.tsx MAX_SCALE
-const BASE_WIDTH = 1.8;
+
+// Ink weight follows the app's formula (App.tsx PEN_WIDTH_PER_SCALE ×
+// scale × thickness × INK_WEIGHT.graves.pen) at a thickness a touch above
+// the 1x default, so previews match the normalized in-app look but stay
+// readable at picker size.
+const THICKNESS = 1.15;
+const BASE_WIDTH = (2.2 / 1.6) * SCALE * THICKNESS;
+
+// Rasterization width: previews show at up to ~500 CSS px in the picker
+// dialog, so 1000 device px covers retina.
+const PNG_WIDTH = 1000;
+const INK = "#1c1c28"; // App.tsx DEFAULT_INK
 
 const outDir =
   process.argv[2] ??
@@ -80,9 +92,15 @@ for (const [name, style] of jobs) {
     scale: SCALE,
     pen: { base: BASE_WIDTH },
   });
-  const file = `${outDir}/${name}.svg`;
-  writeFileSync(file, svg);
+  // resvg has no CSS context, so currentColor must become a literal color.
+  const png = new Resvg(svg.replaceAll("currentColor", INK), {
+    fitTo: { mode: "width", value: PNG_WIDTH },
+  })
+    .render()
+    .asPng();
+  const file = `${outDir}/${name}.png`;
+  writeFileSync(file, png);
   console.log(
-    `wrote ${file} (seed ${seed}, ${offsets.length} steps, ${(svg.length / 1024).toFixed(1)} KB, ${Math.round(performance.now() - start)}ms)`,
+    `wrote ${file} (seed ${seed}, ${offsets.length} steps, ${(png.length / 1024).toFixed(1)} KB, ${Math.round(performance.now() - start)}ms)`,
   );
 }

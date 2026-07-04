@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
-import { ChevronDownIcon, RotateCcwIcon } from "lucide-react";
+import { ChevronDownIcon, RotateCcwIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -9,13 +9,6 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import StylePicker, { styleOptions } from "./StylePicker.js";
@@ -90,8 +83,75 @@ interface RibbonLayout {
   totalPoints: number;
 }
 
+/** iOS-style segmented control: a radiogroup whose selected pill slides to
+ * the picked option. The pill is measured off the selected button, so it
+ * tracks variable label widths and the flex-stretched mobile layout. */
+function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  "aria-label": ariaLabel,
+}: {
+  options: ReadonlyArray<{ value: T; label: string }>;
+  value: T;
+  onChange: (value: T) => void;
+  "aria-label": string;
+}) {
+  const groupRef = useRef<HTMLDivElement>(null);
+  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+  const index = options.findIndex((option) => option.value === value);
+
+  useLayoutEffect(() => {
+    const group = groupRef.current;
+    if (!group) return;
+    const update = () => {
+      const button = group.querySelectorAll<HTMLElement>("[role=radio]")[index];
+      setPill(button ? { left: button.offsetLeft, width: button.offsetWidth } : null);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(group);
+    return () => observer.disconnect();
+  }, [index, options]);
+
+  return (
+    <div
+      ref={groupRef}
+      role="radiogroup"
+      aria-label={ariaLabel}
+      className="relative inline-flex rounded-lg border border-input p-0.5 max-sm:flex-1"
+    >
+      {pill && (
+        <span
+          aria-hidden
+          className="absolute top-0.5 bottom-0.5 rounded-md bg-primary transition-[left,width] duration-200 ease-out"
+          style={{ left: pill.left, width: pill.width }}
+        />
+      )}
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={option.value === value}
+          className={cn(
+            "relative cursor-pointer rounded-md px-3 py-1 text-sm transition-colors max-sm:flex-1",
+            option.value === value
+              ? "text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const textInputRef = useRef<HTMLInputElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const offsetsRef = useRef<Array<[number, number, number]>>([]);
   const stepsRef = useRef<PenStep[]>([]);
@@ -475,14 +535,30 @@ export default function App() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Input
-          className="min-w-0 flex-1 basis-56"
-          value={text}
-          maxLength={descriptor?.maxTextLength ?? 75}
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={(event) => event.key === "Enter" && !busy && write()}
-          placeholder="type something to write…"
-        />
+        <div className="relative min-w-0 flex-1 basis-56">
+          <Input
+            ref={textInputRef}
+            className={cn(text && "pr-8")}
+            value={text}
+            maxLength={descriptor?.maxTextLength ?? 75}
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && !busy && write()}
+            placeholder="type something to write…"
+          />
+          {text && (
+            <button
+              type="button"
+              aria-label="clear text"
+              className="absolute top-1/2 right-1 -translate-y-1/2 cursor-pointer rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => {
+                setText("");
+                textInputRef.current?.focus();
+              }}
+            >
+              <XIcon className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
         <Button
           className="max-sm:flex-1"
           onClick={write}
@@ -515,64 +591,34 @@ export default function App() {
           />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="flex flex-col gap-4 border-t px-4 pt-3.5 pb-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <Select
-                value={engine}
-                onValueChange={(value) => switchEngine(value as EngineId)}
-                items={{ graves: "longhand engine", calligrapher: "calligrapher engine" }}
-              >
-                <SelectTrigger
-                  className="engine-select max-sm:w-full"
-                  aria-label="handwriting engine"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="graves">longhand engine</SelectItem>
-                  <SelectItem value="calligrapher">calligrapher engine</SelectItem>
-                </SelectContent>
-              </Select>
-              <StylePicker options={options} value={style} onChange={setStyle} />
-            </div>
-
+          <div className="border-t px-4 pt-3.5 pb-4">
             <div className="grid gap-x-10 gap-y-3.5 sm:grid-cols-2">
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="w-16 shrink-0">legibility</span>
-                <div
-                  role="radiogroup"
-                  aria-label="legibility"
-                  className="inline-flex rounded-lg border border-input p-0.5 max-sm:flex-1"
-                >
-                  {(Object.keys(LEGIBILITY) as Legibility[]).map((level) => (
-                    <button
-                      key={level}
-                      type="button"
-                      role="radio"
-                      aria-checked={legibility === level}
-                      className={cn(
-                        "cursor-pointer rounded-md px-3 py-1 text-sm transition-colors max-sm:flex-1",
-                        legibility === level
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                      onClick={() => setLegibility(level)}
-                    >
-                      {level}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <span className="w-16 shrink-0 max-sm:hidden">model</span>
+                <Segmented
+                  aria-label="model"
+                  options={[
+                    { value: "graves", label: "longhand" },
+                    { value: "calligrapher", label: "calligrapher" },
+                  ]}
+                  value={engine}
+                  onChange={switchEngine}
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <span className="w-16 shrink-0 max-sm:hidden">style</span>
+                <StylePicker options={options} value={style} onChange={setStyle} />
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="w-16 shrink-0">thickness</span>
-                <Slider
-                  className="min-w-0 flex-1"
-                  aria-label="thickness"
-                  min={0.5}
-                  max={1.5}
-                  step={0.05}
-                  value={thickness}
-                  onValueChange={(value) => setThickness(value as number)}
+                <span className="w-16 shrink-0">legibility</span>
+                <Segmented
+                  aria-label="legibility"
+                  options={(Object.keys(LEGIBILITY) as Legibility[]).map((level) => ({
+                    value: level,
+                    label: level,
+                  }))}
+                  value={legibility}
+                  onChange={setLegibility}
                 />
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -592,30 +638,28 @@ export default function App() {
                 />
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="w-16 shrink-0">thickness</span>
+                <Slider
+                  className="min-w-0 flex-1"
+                  aria-label="thickness"
+                  min={0.5}
+                  max={1.5}
+                  step={0.05}
+                  value={thickness}
+                  onValueChange={(value) => setThickness(value as number)}
+                />
+              </div>
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span className="w-16 shrink-0">stroke</span>
-                <div
-                  role="radiogroup"
+                <Segmented
                   aria-label="stroke type"
-                  className="inline-flex rounded-lg border border-input p-0.5 max-sm:flex-1"
-                >
-                  {(["pen", "ribbon"] as const).map((kind) => (
-                    <button
-                      key={kind}
-                      type="button"
-                      role="radio"
-                      aria-checked={stroke === kind}
-                      className={cn(
-                        "cursor-pointer rounded-md px-3 py-1 text-sm transition-colors max-sm:flex-1",
-                        stroke === kind
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                      onClick={() => setStroke(kind)}
-                    >
-                      {kind}
-                    </button>
-                  ))}
-                </div>
+                  options={[
+                    { value: "pen", label: "pen" },
+                    { value: "ribbon", label: "ribbon" },
+                  ]}
+                  value={stroke}
+                  onChange={setStroke}
+                />
               </div>
               {/* On phones the labelled row can't fit eight fixed-size
                   swatches, so the label hides and the palette spans the

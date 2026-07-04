@@ -58,16 +58,16 @@ await waitForIdle();
 // open it once and leave it open for the whole run.
 await page.getByRole("button", { name: /^options/ }).click();
 
-// The engine dropdown is a shadcn/Base UI select: the trigger shows the
-// selected engine's label and the options live in a popup.
+// The model picker is a segmented radio toggle, like stroke and legibility.
 const selectEngine = async (label) => {
-  await page.locator(".engine-select").click();
-  await page.getByRole("option", { name: label }).click();
+  await page.getByRole("radio", { name: label, exact: true }).click();
 };
 
 // Boot defaults: calligrapher engine, style 2, pen stroke.
-if (!(await page.locator(".engine-select").textContent()).includes("calligrapher engine"))
-  fail("default engine is not calligrapher");
+const calligrapherChecked = await page
+  .getByRole("radio", { name: "calligrapher", exact: true })
+  .getAttribute("aria-checked");
+if (calligrapherChecked !== "true") fail("default model is not calligrapher");
 const bootStyle = await page.locator(".style-picker-trigger").getAttribute("aria-label");
 if (bootStyle !== "handwriting style: style 2")
   fail(`default style is "${bootStyle}", expected style 2`);
@@ -104,7 +104,7 @@ if ((await page.locator("footer").textContent()) !== seedBeforeReplay)
 
 // Engine switch: the graves model loads (15 MB), the style picker
 // re-populates, and its null style (freehand) is the default.
-await selectEngine("longhand engine");
+await selectEngine("longhand");
 await waitForIdle();
 const gravesStyle = await page.locator(".style-picker-trigger").getAttribute("aria-label");
 if (gravesStyle !== "handwriting style: freehand")
@@ -132,7 +132,7 @@ await page.waitForTimeout(1_000);
 const restyledInk = await inkPixels();
 
 // And back: the calligrapher engine is cached, so this is instant.
-await selectEngine("calligrapher engine");
+await selectEngine("calligrapher");
 await waitForIdle();
 
 await page.screenshot({ path: screenshotPath, fullPage: true });
