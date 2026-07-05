@@ -761,7 +761,7 @@ export default function App() {
       <Collapsible
         open={optionsOpen}
         onOpenChange={setOptionsOpen}
-        className="rounded-3xl bg-muted shadow-sm dark:bg-muted/50"
+        className="rounded-3xl bg-[oklch(0.93_0_0)] shadow-sm dark:bg-[oklch(0.23_0_0)]"
       >
         <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm">
           <span className="font-medium">options</span>
