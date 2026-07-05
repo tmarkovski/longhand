@@ -2,6 +2,7 @@ import Foundation
 import InkCalligrapher
 import InkCore
 import InkGraves
+import InkRender
 
 /// The two handwriting engines, mirroring the web app's model picker.
 enum Engine: String, CaseIterable, Identifiable {
@@ -15,6 +16,16 @@ enum Engine: String, CaseIterable, Identifiable {
         switch self {
         case .calligrapher: return "random"
         case .longhand: return "freehand"
+        }
+    }
+
+    /// Each engine's tuned ink look, mirroring the web app's defaults:
+    /// the calligrapher paints speed-shaped filled ribbons, longhand
+    /// strokes a smoothed line with speed-based pen widths.
+    var renderer: InkRenderer {
+        switch self {
+        case .calligrapher: return .ribbon
+        case .longhand: return .pen
         }
     }
 }
@@ -37,12 +48,16 @@ actor InkEngine {
         }
     }
 
+    /// Generate a line and prepare it for the engine's renderer, like the
+    /// web app's layout step: the ribbon look levels the baseline only
+    /// (leveling is a pure rotation, so the ribbon's speed-shaped widths
+    /// are untouched); the pen look also smooths sampling jitter first.
     func write(_ engine: Engine, text: String, bias: Double, style: Int?, seed: UInt32) throws -> [InkStroke] {
         switch engine {
         case .calligrapher:
-            return offsetsToLine(try loadedCalligrapher().write(text, bias: bias, style: style, seed: seed))
+            return alignLine(offsetsToLine(try loadedCalligrapher().write(text, bias: bias, style: style, seed: seed)))
         case .longhand:
-            return offsetsToLine(try loadedGraves().write(text, bias: bias, style: style, seed: seed))
+            return polishLine(offsetsToLine(try loadedGraves().write(text, bias: bias, style: style, seed: seed)))
         }
     }
 

@@ -12,6 +12,7 @@
 		1A0000000000000000000015 /* calligrapher-v1.bin in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000000000000000000019 /* calligrapher-v1.bin */; };
 		1A0000000000000000000017 /* InkCalligrapher in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000016 /* InkCalligrapher */; };
 		1A000000000000000000001B /* InkCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000018 /* InkCore */; };
+		1A000000000000000000001D /* InkRender in Frameworks */ = {isa = PBXBuildFile; productRef = 1A000000000000000000001C /* InkRender */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 				1A0000000000000000000005 /* InkGraves in Frameworks */,
 				1A0000000000000000000017 /* InkCalligrapher in Frameworks */,
 				1A000000000000000000001B /* InkCore in Frameworks */,
+				1A000000000000000000001D /* InkRender in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,6 +89,7 @@
 				1A0000000000000000000014 /* InkGraves */,
 				1A0000000000000000000016 /* InkCalligrapher */,
 				1A0000000000000000000018 /* InkCore */,
+				1A000000000000000000001C /* InkRender */,
 			);
 			productName = LonghandExample;
 			productReference = 1A0000000000000000000002 /* LonghandExample.app */;
@@ -287,6 +290,10 @@
 		1A0000000000000000000018 /* InkCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = InkCore;
+		};
+		1A000000000000000000001C /* InkRender */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = InkRender;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

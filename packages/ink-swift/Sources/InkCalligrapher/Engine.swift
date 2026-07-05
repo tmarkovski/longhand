@@ -92,10 +92,9 @@ public final class CalligrapherWriter {
     private let cell: CalligrapherCell
     private var rng: Rng
     private let state: CellState
-    private let encoded: [Float]
+    private let encoded: RawBuffer<Float>
     private let charCount: Int
     private let maxSteps: Int
-    private var lastInput: [Float] = [0, 0, 1]
     private var steps = 0
 
     init(model: CalligrapherModel, cell: CalligrapherCell, text: String, bias: Double, style: Int?, seed: UInt32) throws {
@@ -114,7 +113,7 @@ public final class CalligrapherWriter {
 
         let ids = model.encode(text)
         self.charCount = ids.count
-        self.encoded = cell.encodeText(ids)
+        self.encoded = RawBuffer(copying: cell.encodeText(ids))
         self.state = cell.initialState(charCount: charCount, styleIndex: chosen)
         self.maxSteps = CalligrapherModel.stepsPerCharacter * text.count
     }
@@ -122,14 +121,17 @@ public final class CalligrapherWriter {
     /// Advance one timestep. Returns the sampled offset, or nil once done.
     public func step() -> StrokeOffset? {
         if done { return nil }
-        let result = cell.step(state, input: lastInput, encoded: encoded, charCount: charCount)
-        let offset = cell.sample(result.output, bias: bias, rng: &rng)
+        let termination = cell.step(state, encoded: encoded.p, charCount: charCount)
+        let offset = cell.sample(state, bias: bias, rng: &rng)
         steps += 1
-        if steps > maxSteps || result.termination > 0.5 {
+        if steps > maxSteps || termination > 0.5 {
             done = true
             return nil
         }
-        lastInput = offset
-        return StrokeOffset(dx: Double(offset[0]), dy: Double(offset[1]), eos: offset[2] == 1)
+        let input = state.input.p
+        input[0] = offset.dx
+        input[1] = offset.dy
+        input[2] = offset.pen
+        return StrokeOffset(dx: Double(offset.dx), dy: Double(offset.dy), eos: offset.pen == 1)
     }
 }

@@ -34,6 +34,20 @@ public func offsetsToLine(_ offsets: [StrokeOffset]) -> [InkStroke] {
     return strokes
 }
 
+/// Scale then translate every point (returns a new line).
+public func transformLine(
+    _ strokes: [InkStroke],
+    scale: Double = 1,
+    translateX: Double = 0,
+    translateY: Double = 0
+) -> [InkStroke] {
+    strokes.map { stroke in
+        InkStroke(points: stroke.points.map { point in
+            SIMD2(point.x * scale + translateX, point.y * scale + translateY)
+        })
+    }
+}
+
 public struct Bounds: Equatable, Sendable {
     public let minX: Double
     public let minY: Double

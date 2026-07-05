@@ -39,4 +39,32 @@ import Testing
             try model.writer("hi", style: 99)
         }
     }
+
+    /// Real-time streaming needs 125 steps/sec (the web app reveals one
+    /// step per 8ms). The engine target compiles with -O even in debug
+    /// (see Package.swift), so this also catches that flag going missing.
+    @Test func sustainsAtLeast125StepsPerSecond() throws {
+        let writer = try model.writer(
+            "the quick brown fox jumps over the lazy dog then keeps on going",
+            bias: 0.75,
+            style: 3,
+            seed: 1
+        )
+        for _ in 0 ..< 30 { _ = writer.step() } // warmup
+        let clock = ContinuousClock()
+        var steps = 0
+        let elapsed = clock.measure {
+            while steps < 600, writer.step() != nil { steps += 1 }
+        }
+        let stepsPerSecond = Double(steps) / max(elapsed.seconds, 1e-9)
+        print("engine speed: \(Int(stepsPerSecond)) steps/sec over \(steps) steps")
+        #expect(stepsPerSecond > 125)
+    }
+}
+
+private extension Duration {
+    var seconds: Double {
+        let (seconds, attoseconds) = components
+        return Double(seconds) + Double(attoseconds) * 1e-18
+    }
 }

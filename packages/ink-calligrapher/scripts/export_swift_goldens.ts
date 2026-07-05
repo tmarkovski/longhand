@@ -20,10 +20,21 @@ const assets = parseCalligrapherWeights(
 );
 const model = new CalligrapherModel(assets);
 
+// Deliberately wide coverage: this fixture set is the safety net for any
+// Swift-side rewrite of the cell (rounding-order changes show up as count
+// or pen-bit divergence). Unknown characters stay single-code-unit so TS
+// (UTF-16 units) and Swift (graphemes) agree on text length.
 const cases = [
   { text: "hello world", bias: 0.75, style: null, seed: 7 },
   { text: "hello world", bias: 0.75, style: 9, seed: 42 },
   { text: "the quick brown fox", bias: 1, style: 3, seed: 1 },
+  { text: "Pack my box with five dozen liquor jugs!", bias: 0.75, style: 0, seed: 2026 },
+  { text: "hello world", bias: 0, style: 5, seed: 99 }, // unbiased sampling
+  { text: "hello world", bias: 2, style: 5, seed: 99 }, // heavy bias, same seed
+  { text: "a", bias: 0.75, style: 1, seed: 3 }, // tiny step budget
+  { text: "héllo wörld", bias: 0.75, style: 7, seed: 11 }, // UNKNOWN fallback
+  { text: "0123456789 -- \"quotes\" & (parens)?", bias: 0.75, style: 77, seed: 5 }, // digits, punctuation, unexposed style
+  { text: "it was the best of times, it was the worst of times", bias: 0.5, style: null, seed: 123456789 },
 ];
 
 const out = cases.map((options) => ({
