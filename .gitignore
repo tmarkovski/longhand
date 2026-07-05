@@ -1,5 +1,8 @@
 node_modules/
 dist/
+.build/
+.swiftpm/
+xcuserdata/
 coverage/
 .DS_Store
 *.log
