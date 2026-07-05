@@ -7,12 +7,13 @@ import InkGraves
 actor InkEngine {
     private var model: GravesModel?
 
-    func prepare() throws {
-        _ = try loadedModel()
+    /// Loads the model and returns the style ids it can write.
+    func prepare() throws -> [Int] {
+        try loadedModel().styles
     }
 
-    func write(_ text: String, bias: Double, seed: UInt32) throws -> [InkStroke] {
-        offsetsToLine(try loadedModel().write(text, bias: bias, seed: seed))
+    func write(_ text: String, bias: Double, style: Int?, seed: UInt32) throws -> [InkStroke] {
+        offsetsToLine(try loadedModel().write(text, bias: bias, style: style, seed: seed))
     }
 
     private func loadedModel() throws -> GravesModel {

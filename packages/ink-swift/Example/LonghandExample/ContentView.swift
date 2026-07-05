@@ -14,6 +14,10 @@ struct ContentView: View {
     @State private var strokes: [InkStroke] = []
     @State private var status = Status.loading
 
+    // nil is the model's unstyled "freehand" mode, like the web app.
+    @State private var style: Int? = nil
+    @State private var styleIds: [Int] = []
+
     // Replay clock: the canvas reveals points at web-parity pen pace from
     // penStart; penDone pauses the timeline once the line is fully drawn.
     @State private var penStart = Date.distantPast
@@ -32,6 +36,14 @@ struct ContentView: View {
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
                     .onSubmit(write)
+                Picker("style", selection: $style) {
+                    Text("freehand").tag(Int?.none)
+                    ForEach(styleIds, id: \.self) { id in
+                        Text("style \(id)").tag(Int?.some(id))
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
                 Button("Write", action: write)
                     .buttonStyle(.borderedProminent)
                     .disabled(!canWrite)
@@ -66,7 +78,7 @@ struct ContentView: View {
         .frame(minWidth: 480, minHeight: 320)
         .task {
             do {
-                try await engine.prepare()
+                styleIds = try await engine.prepare()
                 status = .ready
             } catch {
                 status = .failed(String(describing: error))
@@ -80,7 +92,7 @@ struct ContentView: View {
         let input = text
         Task {
             do {
-                strokes = try await engine.write(input, bias: 0.75, seed: .random(in: .min ... .max))
+                strokes = try await engine.write(input, bias: 0.75, style: style, seed: .random(in: .min ... .max))
                 status = .ready
                 replay()
             } catch {
