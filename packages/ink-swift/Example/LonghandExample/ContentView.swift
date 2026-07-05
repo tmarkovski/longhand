@@ -1,4 +1,4 @@
-import InkGraves
+import InkCore
 import SwiftUI
 
 struct ContentView: View {
@@ -9,12 +9,14 @@ struct ContentView: View {
         case failed(String)
     }
 
-    private let engine = InkEngine()
+    private let ink = InkEngine()
     @State private var text = "a line of ink"
     @State private var strokes: [InkStroke] = []
     @State private var status = Status.loading
 
-    // nil is the model's unstyled "freehand" mode, like the web app.
+    @State private var engine = Engine.calligrapher
+    // nil is the engine's unstyled mode: random for calligrapher, freehand
+    // for longhand, like the web app.
     @State private var style: Int? = nil
     @State private var styleIds: [Int] = []
 
@@ -36,8 +38,15 @@ struct ContentView: View {
                     .textFieldStyle(.roundedBorder)
                     .autocorrectionDisabled()
                     .onSubmit(write)
+                Picker("engine", selection: $engine) {
+                    ForEach(Engine.allCases) { engine in
+                        Text(engine.rawValue).tag(engine)
+                    }
+                }
+                .labelsHidden()
+                .fixedSize()
                 Picker("style", selection: $style) {
-                    Text("freehand").tag(Int?.none)
+                    Text(engine.defaultStyleName).tag(Int?.none)
                     ForEach(styleIds, id: \.self) { id in
                         Text("style \(id)").tag(Int?.some(id))
                     }
@@ -75,10 +84,12 @@ struct ContentView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding()
-        .frame(minWidth: 480, minHeight: 320)
-        .task {
+        .frame(minWidth: 560, minHeight: 320)
+        .task(id: engine) {
+            status = .loading
+            style = nil
             do {
-                styleIds = try await engine.prepare()
+                styleIds = try await ink.prepare(engine)
                 status = .ready
             } catch {
                 status = .failed(String(describing: error))
@@ -92,7 +103,7 @@ struct ContentView: View {
         let input = text
         Task {
             do {
-                strokes = try await engine.write(input, bias: 0.75, style: style, seed: .random(in: .min ... .max))
+                strokes = try await ink.write(engine, text: input, bias: 0.75, style: style, seed: .random(in: .min ... .max))
                 status = .ready
                 replay()
             } catch {

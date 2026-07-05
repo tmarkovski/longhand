@@ -15,4 +15,5 @@ __pycache__/
 .venv/
 packages/ink-graves/assets/
 packages/ink-graves/test/goldens/
+packages/ink-calligrapher/test/goldens/
 apps/web/public/model/

@@ -14,6 +14,7 @@
 /// the nonlinear tails run in Double like the JS engine's number math.
 
 import Foundation
+import InkCore
 #if canImport(Accelerate)
 import Accelerate
 #endif
@@ -48,19 +49,6 @@ public final class MdnParams {
     public var sigmaY = [Float](repeating: 0, count: OUTPUT_MIXTURES)
     public var rho = [Float](repeating: 0, count: OUTPUT_MIXTURES)
     public var eos: Float = 0
-}
-
-/// One raw model output row: pen movement delta and end-of-stroke flag.
-public struct StrokeOffset: Equatable, Sendable {
-    public let dx: Double
-    public let dy: Double
-    public let eos: Bool
-
-    public init(dx: Double, dy: Double, eos: Bool) {
-        self.dx = dx
-        self.dy = dy
-        self.eos = eos
-    }
 }
 
 @inline(__always) private func sigmoid(_ v: Double) -> Double {

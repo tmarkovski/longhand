@@ -2,6 +2,7 @@
 /// packages/ink-graves/test/engine.test.ts.
 
 import Foundation
+import InkCore
 import InkGraves
 import Testing
 

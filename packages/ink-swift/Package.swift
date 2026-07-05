@@ -9,10 +9,15 @@ let package = Package(
     name: "ink-swift",
     platforms: [.macOS(.v13), .iOS(.v16)],
     products: [
-        .library(name: "InkGraves", targets: ["InkGraves"])
+        .library(name: "InkCore", targets: ["InkCore"]),
+        .library(name: "InkGraves", targets: ["InkGraves"]),
+        .library(name: "InkCalligrapher", targets: ["InkCalligrapher"]),
     ],
     targets: [
-        .target(name: "InkGraves"),
+        .target(name: "InkCore"),
+        .target(name: "InkGraves", dependencies: ["InkCore"]),
+        .target(name: "InkCalligrapher", dependencies: ["InkCore"]),
         .testTarget(name: "InkGravesTests", dependencies: ["InkGraves"]),
+        .testTarget(name: "InkCalligrapherTests", dependencies: ["InkCalligrapher"]),
     ]
 )

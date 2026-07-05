@@ -1,4 +1,4 @@
-import InkGraves
+import InkCore
 import Testing
 
 @Suite struct GeometryTests {

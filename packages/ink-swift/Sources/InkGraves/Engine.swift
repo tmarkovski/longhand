@@ -4,6 +4,7 @@
 /// termination.
 
 import Foundation
+import InkCore
 
 public let STEPS_PER_CHARACTER = 40
 
