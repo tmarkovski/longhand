@@ -1,5 +1,5 @@
-/// Fixtures shared with the web app and the TS engine: the weights are the
-/// same calligrapher-v1.bin the site serves, and the parity fixtures are
+/// Fixtures shared with the TS engine: the weights are the committed
+/// package asset the web app also serves, and the parity fixtures are
 /// dumped from the TS engine (which test/parity.test.ts holds bit-compatible
 /// with the vendored calligrapher.ai reference) by
 /// packages/ink-calligrapher/scripts/export_swift_goldens.ts.
@@ -16,9 +16,9 @@ private let repoRoot = URL(fileURLWithPath: #filePath)
 
 enum Fixtures {
     static let assets: CalligrapherAssets = {
-        let url = repoRoot.appendingPathComponent("apps/web/public/model/calligrapher-v1.bin")
+        let url = repoRoot.appendingPathComponent("packages/ink-calligrapher/assets/calligrapher-v1.bin")
         guard let data = try? Data(contentsOf: url) else {
-            fatalError("missing \(url.path) — the web app's model download provides it")
+            fatalError("missing \(url.path) — committed with the ink-calligrapher package")
         }
         do {
             return try parseCalligrapherWeights(data)

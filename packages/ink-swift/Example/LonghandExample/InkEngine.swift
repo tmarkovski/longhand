@@ -32,7 +32,8 @@ enum Engine: String, CaseIterable, Identifiable {
 
 /// Owns the (non-Sendable) models so generation runs off the main actor.
 /// Both weight files ship in the app bundle: the project references the
-/// same binaries the web app serves.
+/// engine packages' committed assets (the same binaries the web app
+/// syncs into its public/model directory).
 actor InkEngine {
     private var calligrapher: CalligrapherModel?
     private var graves: GravesModel?

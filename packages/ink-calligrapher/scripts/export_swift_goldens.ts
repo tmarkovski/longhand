@@ -11,9 +11,7 @@ import { fileURLToPath } from "node:url";
 import { CalligrapherModel } from "../src/engine.js";
 import { parseCalligrapherWeights } from "../src/weights.js";
 
-const weightsPath = fileURLToPath(
-  new URL("../../../apps/web/public/model/calligrapher-v1.bin", import.meta.url),
-);
+const weightsPath = fileURLToPath(new URL("../assets/calligrapher-v1.bin", import.meta.url));
 const buffer = readFileSync(weightsPath);
 const assets = parseCalligrapherWeights(
   buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),

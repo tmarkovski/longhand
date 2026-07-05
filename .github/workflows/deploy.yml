@@ -19,8 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: true
 
       - uses: pnpm/action-setup@v6
 
@@ -29,23 +27,10 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      # setup-uv no longer publishes major tags (v8+); pin the exact version.
-      - uses: astral-sh/setup-uv@v8.2.0
-        with:
-          enable-cache: true
-          cache-dependency-glob: tools/uv.lock
-
-      - name: Export model weights into the site
-        working-directory: tools
-        run: |
-          uv sync
-          uv run python export_weights.py --out ../apps/web/public/model/graves-v1.bin
-
-      - name: Copy calligrapher model into the site
-        run: cp vendor/calligrapher-ai/d.bin apps/web/public/model/calligrapher-v1.bin
-
       - run: pnpm install --frozen-lockfile
 
+      # The build syncs the engine packages' committed model assets into
+      # public/model, so no weight-export toolchain is needed here.
       - run: pnpm --filter @longhand/web build
 
       - uses: actions/configure-pages@v6

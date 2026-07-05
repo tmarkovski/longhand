@@ -13,7 +13,6 @@ apps/web/smoke.png
 scratch/
 __pycache__/
 .venv/
-packages/ink-graves/assets/
 packages/ink-graves/test/goldens/
 packages/ink-calligrapher/test/goldens/
 packages/ink-render/test/goldens/

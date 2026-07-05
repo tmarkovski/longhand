@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "node scripts/sync-models.mjs && vite",
+    "build": "node scripts/sync-models.mjs && vite build",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"

@@ -18,7 +18,7 @@
 /* Begin PBXFileReference section */
 		1A0000000000000000000002 /* LonghandExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LonghandExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1A0000000000000000000003 /* graves-v1.bin */ = {isa = PBXFileReference; name = "graves-v1.bin"; path = "../../ink-graves/assets/graves-v1.bin"; sourceTree = "<group>"; };
-		1A0000000000000000000019 /* calligrapher-v1.bin */ = {isa = PBXFileReference; name = "calligrapher-v1.bin"; path = "../../../apps/web/public/model/calligrapher-v1.bin"; sourceTree = "<group>"; };
+		1A0000000000000000000019 /* calligrapher-v1.bin */ = {isa = PBXFileReference; name = "calligrapher-v1.bin"; path = "../../ink-calligrapher/assets/calligrapher-v1.bin"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
