@@ -170,7 +170,7 @@ function Segmented<T extends string>({
           role="radio"
           aria-checked={option.value === value}
           className={cn(
-            "relative cursor-pointer rounded-full px-3 py-1 text-sm transition-colors max-sm:flex-1",
+            "relative cursor-pointer rounded-full px-3 py-1 text-xs transition-colors max-sm:flex-1",
             option.value === value
               ? "text-primary-foreground"
               : "text-muted-foreground hover:text-foreground",
@@ -250,6 +250,11 @@ function ThemeToggle({ onApply }: { onApply?: () => void }) {
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
+  // Mirror span for the clear button: it renders the typed text invisibly in
+  // the input's font, so the X can sit just past the last glyph instead of
+  // being pinned to the far edge of the row.
+  const textMirrorRef = useRef<HTMLSpanElement>(null);
+  const [clearLeft, setClearLeft] = useState<number | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const offsetsRef = useRef<Array<[number, number, number]>>([]);
   const stepsRef = useRef<PenStep[]>([]);
@@ -275,6 +280,22 @@ export default function App() {
   const [status, setStatus] = useState<Status>("loading");
   const [note, setNote] = useState("loading the calligrapher model (2.6 MB, one time)…");
   const [text, setText] = useState("a line of ink, thinking as it goes");
+
+  // Keep the clear button trailing the text: 8px past the last glyph, but
+  // never past the row's edge (long lines scroll inside the input, so the
+  // X parks at the far right exactly where the visible text ends).
+  useLayoutEffect(() => {
+    const mirror = textMirrorRef.current;
+    const container = mirror?.parentElement;
+    if (!mirror || !container) return;
+    const update = () => {
+      setClearLeft(Math.min(mirror.offsetWidth + 6, container.clientWidth - 26));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [text]);
   const [legibility, setLegibility] = useState<Legibility>("normal");
   const [style, setStyle] = useState<number | null>(null);
   const [engine, setEngine] = useState<EngineId>("calligrapher");
@@ -732,12 +753,26 @@ export default function App() {
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => event.key === "Enter" && !busy && write()}
             placeholder="type something to write…"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
           />
+          {/* Invisible copy of the text in the input's exact font, so the
+              clear button knows where the writing ends. */}
+          <span
+            ref={textMirrorRef}
+            aria-hidden
+            className="pointer-events-none invisible absolute top-0 left-0 pl-0.5 text-base whitespace-pre"
+          >
+            {text}
+          </span>
           {text && (
             <button
               type="button"
               aria-label="clear text"
-              className="absolute top-1/2 right-0 -translate-y-1/2 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
+              className="absolute top-1/2 -translate-y-1/2 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
+              style={{ left: clearLeft ?? undefined }}
               onClick={() => {
                 setText("");
                 textInputRef.current?.focus();
