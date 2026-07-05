@@ -33,8 +33,37 @@ exporters turn them into animated SVG, GIF, video, and raw stroke JSON.
 a port of our own TypeScript packages rather than of the upstream repos, and
 it is held to the same golden fixtures.
 
+## Use it in your app
+
+The repo is directly consumable from git — no registry, and the committed
+weights come along for free. The site's guide
+([trylonghand.com/#/build](https://trylonghand.com/#/build)) has full
+examples; the studio's "use in your app" panel emits code for the exact
+take on screen.
+
+```sh
+npm install github:tmarkovski/longhand   # or pnpm; TS source + weights
+```
+
+```ts
+import { CalligrapherModel, parseCalligrapherWeights } from "longhand/ink-calligrapher";
+import weightsUrl from "longhand/calligrapher.bin?url"; // Vite-style bundlers
+```
+
+```swift
+// Package.swift (manifest lives at the repo root for exactly this)
+.package(url: "https://github.com/tmarkovski/longhand", branch: "main")
+// products: InkCore, InkGraves, InkCalligrapher, InkRender — the engine
+// targets bundle their weights, so bundledGravesWeights() etc. just work.
+```
+
+Cross-package imports inside `packages/*/src` are relative (not
+`@longhand/*`) so the single git-installed package resolves on its own;
+a test guards that invariant.
+
 ```
 longhand/
+├── Package.swift               root SwiftPM manifest, so the repo is a git dependency
 ├── graves-handwriting-mlx/     submodule: MLX reference, golden-vector oracle
 ├── vendor/calligrapher-ai/     calligrapher.ai snapshot: porting reference, parity oracle
 ├── tools/                      Python (uv): weight export, golden vectors
@@ -69,9 +98,13 @@ pnpm test              # TypeScript packages
 pnpm --filter @longhand/web dev
 ```
 
-For the Swift port, run `swift test` in `packages/ink-swift` (after
-`gen:goldens`). `pnpm gen:weights` regenerates the committed Graves weights
-from the submodule; it is only needed when the reference weights change.
+For the Swift port, run `swift test -c release` at the repo root (after
+`gen:goldens`). Release is the fast loop: the manifest carries no
+unsafeFlags (remote consumers would reject them), so debug builds run the
+engines at -Onone — fine for debugging, ~20x slower through the parity
+suites, and the calligrapher perf gate compiles out. `pnpm gen:weights`
+regenerates the committed Graves weights from the submodule; it is only
+needed when the reference weights change.
 
 CI regenerates the golden vectors from the MLX reference on every run, so
 the golden tests double as a drift check on the committed weights. Pushes to

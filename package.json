@@ -1,7 +1,25 @@
 {
   "name": "longhand",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
   "packageManager": "pnpm@10.28.0",
+  "files": [
+    "packages/ink-core/src",
+    "packages/ink-graves/src",
+    "packages/ink-graves/assets",
+    "packages/ink-calligrapher/src",
+    "packages/ink-calligrapher/assets",
+    "packages/ink-render/src"
+  ],
+  "exports": {
+    "./ink-core": "./packages/ink-core/src/index.ts",
+    "./ink-graves": "./packages/ink-graves/src/index.ts",
+    "./ink-calligrapher": "./packages/ink-calligrapher/src/index.ts",
+    "./ink-render": "./packages/ink-render/src/index.ts",
+    "./graves.bin": "./packages/ink-graves/assets/graves-v1.bin",
+    "./calligrapher.bin": "./packages/ink-calligrapher/assets/calligrapher-v1.bin"
+  },
   "scripts": {
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",

@@ -15,15 +15,15 @@ private let repoRoot = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent() // repo root
 
 enum Fixtures {
+    /// Loaded through the public bundled-resource accessor, so the parity
+    /// suite also proves the bundle ships the canonical committed weights
+    /// (packages/ink-calligrapher/assets) — drifted bytes could not match
+    /// the TS-dumped fixtures.
     static let assets: CalligrapherAssets = {
-        let url = repoRoot.appendingPathComponent("packages/ink-calligrapher/assets/calligrapher-v1.bin")
-        guard let data = try? Data(contentsOf: url) else {
-            fatalError("missing \(url.path) — committed with the ink-calligrapher package")
-        }
         do {
-            return try parseCalligrapherWeights(data)
+            return try parseCalligrapherWeights(bundledCalligrapherWeights())
         } catch {
-            fatalError("failed to parse \(url.path): \(error)")
+            fatalError("failed to load bundled calligrapher weights: \(error)")
         }
     }()
 }

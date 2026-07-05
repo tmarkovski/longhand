@@ -1,8 +1,8 @@
 /**
  * Headless smoke test: verifies the boot defaults (calligrapher engine,
  * style 2, pen stroke), writes with both engines and stroke types, replays,
- * restyles, and checks ink actually lands on the canvas with no console
- * errors.
+ * restyles, pins a seed, reads the code panel's snippets, opens the build
+ * page, and checks ink actually lands on the canvas with no console errors.
  *
  *   node e2e/smoke.mjs [baseUrl] [screenshotPath]
  */
@@ -138,7 +138,49 @@ const restyledInk = await inkPixels();
 await selectEngine("calligrapher");
 await waitForIdle();
 
+// Seed pinning: typing a seed pins it, and a write keeps it (the footer
+// carries the take's seed).
+await page.getByLabel("seed", { exact: true }).fill("12345");
+const pinnedChecked = await page
+  .getByRole("radio", { name: "pinned" })
+  .getAttribute("aria-checked");
+if (pinnedChecked !== "true") fail("typing a seed did not pin it");
+await writeButton.click();
+await page.waitForTimeout(2_500);
+if (!(await page.locator("footer").textContent()).includes("seed 12345"))
+  fail("pinned write did not keep the seed");
+
+// The code panel emits the current take for both SDKs, seed included.
+await page.getByRole("button", { name: /^use in your app/ }).click();
+const tsSnippet = await page.locator("pre").innerText();
+if (!tsSnippet.includes("seed: 12345,") || !tsSnippet.includes("CalligrapherModel"))
+  fail("web snippet does not carry the pinned take");
+await page.getByRole("radio", { name: "Swift" }).click();
+const swiftSnippet = await page.locator("pre").innerText();
+if (!swiftSnippet.includes("seed: 12345") || !swiftSnippet.includes("import InkCalligrapher"))
+  fail("swift snippet does not carry the pinned take");
+
 await page.screenshot({ path: screenshotPath, fullPage: true });
+
+// In-app navigation to the guide and back must keep the dialed-in take
+// (the studio stays mounted, hidden), or the code panel's own guide link
+// would destroy the seed it tells users to carry into their app.
+const inkBeforeGuide = await inkPixels();
+await page.getByRole("link", { name: /build with it/ }).click();
+await page.getByRole("heading", { name: "Build with Longhand" }).waitFor({ timeout: 5_000 });
+await page.getByRole("link", { name: "studio", exact: true }).first().click();
+await page
+  .getByRole("heading", { name: "Build with Longhand" })
+  .waitFor({ state: "detached", timeout: 5_000 });
+if (!(await page.locator("footer").textContent()).includes("seed 12345"))
+  fail("returning from the build page lost the pinned take");
+if ((await inkPixels()) < inkBeforeGuide * 0.9)
+  fail("returning from the build page lost the canvas ink");
+
+// The build page also deep-links (hash route on a cold load).
+await page.goto(`${baseUrl}/#/build`);
+await page.getByRole("heading", { name: "Build with Longhand" }).waitFor({ timeout: 10_000 });
+
 await browser.close();
 
 console.log(`calligrapher pen ink:    ${calligrapherPenInk}`);

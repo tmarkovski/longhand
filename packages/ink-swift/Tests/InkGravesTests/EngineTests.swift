@@ -45,6 +45,9 @@ import Testing
         }
     }
 
+    /// Real-time streaming needs 125 steps/sec (the web app reveals one
+    /// step per 8ms). This runs in debug too: the graves cell leans on
+    /// vDSP (precompiled), so it clears the bar even at -Onone.
     @Test func sustainsAtLeast125StepsPerSecond() throws {
         let writer = try model.writer(
             "the quick brown fox jumps over the lazy dog then keeps on going",

@@ -4,7 +4,7 @@
  * sampling with bias sharpening, and attention-based termination.
  */
 
-import type { InkEngine, StrokeOffset } from "@longhand/ink-core";
+import type { InkEngine, StrokeOffset } from "../../ink-core/src/index.js";
 import { Cell, MAX_CHARS } from "./cell.js";
 import type { CellState, MdnParams } from "./cell.js";
 import { Rng } from "./rng.js";
@@ -155,8 +155,13 @@ export class GravesWriter {
     return offset;
   }
 
-  /** Run to termination (or the step budget) and return all offsets. */
-  run(maxSteps: number = STEPS_PER_CHARACTER * this.text.length): StrokeOffset[] {
+  /** Run to termination (or the step budget) and return all offsets. The
+   * default budget floors at 4 characters — very short text often needs
+   * more than its own step allowance to finish a stroke — and matches the
+   * app's worker, so a `write()` reproduces an on-screen take exactly. */
+  run(
+    maxSteps: number = STEPS_PER_CHARACTER * Math.max(this.text.length, 4),
+  ): StrokeOffset[] {
     const offsets: StrokeOffset[] = [];
     for (let t = 0; t < maxSteps; t++) {
       const offset = this.step();

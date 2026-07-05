@@ -7,9 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		1A0000000000000000000004 /* graves-v1.bin in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000000000000000000003 /* graves-v1.bin */; };
 		1A0000000000000000000005 /* InkGraves in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000014 /* InkGraves */; };
-		1A0000000000000000000015 /* calligrapher-v1.bin in Resources */ = {isa = PBXBuildFile; fileRef = 1A0000000000000000000019 /* calligrapher-v1.bin */; };
 		1A0000000000000000000017 /* InkCalligrapher in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000016 /* InkCalligrapher */; };
 		1A000000000000000000001B /* InkCore in Frameworks */ = {isa = PBXBuildFile; productRef = 1A0000000000000000000018 /* InkCore */; };
 		1A000000000000000000001D /* InkRender in Frameworks */ = {isa = PBXBuildFile; productRef = 1A000000000000000000001C /* InkRender */; };
@@ -17,8 +15,6 @@
 
 /* Begin PBXFileReference section */
 		1A0000000000000000000002 /* LonghandExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LonghandExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		1A0000000000000000000003 /* graves-v1.bin */ = {isa = PBXFileReference; name = "graves-v1.bin"; path = "../../ink-graves/assets/graves-v1.bin"; sourceTree = "<group>"; };
-		1A0000000000000000000019 /* calligrapher-v1.bin */ = {isa = PBXFileReference; name = "calligrapher-v1.bin"; path = "../../ink-calligrapher/assets/calligrapher-v1.bin"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,8 +48,6 @@
 			isa = PBXGroup;
 			children = (
 				1A0000000000000000000001 /* LonghandExample */,
-				1A0000000000000000000003 /* graves-v1.bin */,
-				1A0000000000000000000019 /* calligrapher-v1.bin */,
 				1A000000000000000000000A /* Products */,
 			);
 			sourceTree = "<group>";
@@ -119,7 +113,7 @@
 			);
 			mainGroup = 1A0000000000000000000009;
 			packageReferences = (
-				1A0000000000000000000013 /* XCLocalSwiftPackageReference ".." */,
+				1A0000000000000000000013 /* XCLocalSwiftPackageReference "../../.." */,
 			);
 			productRefGroup = 1A000000000000000000000A /* Products */;
 			projectDirPath = "";
@@ -135,8 +129,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1A0000000000000000000004 /* graves-v1.bin in Resources */,
-				1A0000000000000000000015 /* calligrapher-v1.bin in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -272,9 +264,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		1A0000000000000000000013 /* XCLocalSwiftPackageReference ".." */ = {
+		1A0000000000000000000013 /* XCLocalSwiftPackageReference "../../.." */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = "..";
+			relativePath = "../../..";
 		};
 /* End XCLocalSwiftPackageReference section */
 

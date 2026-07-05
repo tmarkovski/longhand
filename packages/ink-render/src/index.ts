@@ -10,7 +10,7 @@
  * so they work on screen-space (y-down) lines as-is.
  */
 
-import type { InkLine } from "@longhand/ink-core";
+import type { InkLine } from "../../ink-core/src/index.js";
 
 export { ribbonOutline, ribbonPath, RIBBON_WIDTH, type RibbonOutline } from "./ribbon.js";
 export { layoutLine, lineToSvg, penStrokes, type LineLayout, type LineSvgOptions, type PenRun, type PenStrokeParts } from "./svg.js";

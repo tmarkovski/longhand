@@ -7,7 +7,7 @@
  * is discarded, exactly like the reference.
  */
 
-import type { InkEngine, StrokeOffset } from "@longhand/ink-core";
+import type { InkEngine, StrokeOffset } from "../../ink-core/src/index.js";
 import { CalligrapherCell } from "./cell.js";
 import type { CellState } from "./cell.js";
 import { ALPHABET, CHAR_TO_ID, END, START, UNKNOWN } from "./charmap.js";

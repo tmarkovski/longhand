@@ -31,9 +31,9 @@ enum Engine: String, CaseIterable, Identifiable {
 }
 
 /// Owns the (non-Sendable) models so generation runs off the main actor.
-/// Both weight files ship in the app bundle: the project references the
-/// engine packages' committed assets (the same binaries the web app
-/// syncs into its public/model directory).
+/// The weights come from the engine targets' bundled resources (the same
+/// committed binaries the web app syncs into its public/model directory),
+/// so the app bundles nothing of its own.
 actor InkEngine {
     private var calligrapher: CalligrapherModel?
     private var graves: GravesModel?
@@ -62,25 +62,16 @@ actor InkEngine {
         }
     }
 
-    private func bundledWeights(_ resource: String) throws -> Data {
-        guard let url = Bundle.main.url(forResource: resource, withExtension: "bin") else {
-            throw CocoaError(.fileNoSuchFile, userInfo: [
-                NSLocalizedDescriptionKey: "\(resource).bin is not in the app bundle"
-            ])
-        }
-        return try Data(contentsOf: url)
-    }
-
     private func loadedCalligrapher() throws -> CalligrapherModel {
         if let calligrapher { return calligrapher }
-        let loaded = try CalligrapherModel(assets: parseCalligrapherWeights(bundledWeights("calligrapher-v1")))
+        let loaded = try CalligrapherModel(assets: parseCalligrapherWeights(bundledCalligrapherWeights()))
         calligrapher = loaded
         return loaded
     }
 
     private func loadedGraves() throws -> GravesModel {
         if let graves { return graves }
-        let loaded = try GravesModel(assets: parseModelAssets(bundledWeights("graves-v1")))
+        let loaded = try GravesModel(assets: parseModelAssets(bundledGravesWeights()))
         graves = loaded
         return loaded
     }

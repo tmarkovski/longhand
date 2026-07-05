@@ -1,7 +1,7 @@
-/// Test fixtures shared with the TS engine: the CALW weights file and the
-/// MLX-generated golden vectors both live in packages/ink-graves (gitignored;
-/// regenerate with tools/export_weights.py and the golden export script if
-/// missing), located here relative to this source file.
+/// Test fixtures shared with the TS engine: the CALW weights come from the
+/// target's bundled resource, and the MLX-generated golden vectors live in
+/// packages/ink-graves/test/goldens (gitignored; regenerate with
+/// `pnpm gen:goldens`), located here relative to this source file.
 
 import Foundation
 import InkGraves
@@ -13,15 +13,15 @@ private let packagesDirectory = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent() // packages
 
 enum Fixtures {
+    /// Loaded through the public bundled-resource accessor, so the golden
+    /// suite also proves the bundle ships the canonical committed weights
+    /// (packages/ink-graves/assets) — drifted bytes could not match the
+    /// MLX-generated golden vectors.
     static let assets: ModelAssets = {
-        let url = packagesDirectory.appendingPathComponent("ink-graves/assets/graves-v1.bin")
-        guard let data = try? Data(contentsOf: url) else {
-            fatalError("missing \(url.path) — generate it with tools/export_weights.py")
-        }
         do {
-            return try parseModelAssets(data)
+            return try parseModelAssets(bundledGravesWeights())
         } catch {
-            fatalError("failed to parse \(url.path): \(error)")
+            fatalError("failed to load bundled graves weights: \(error)")
         }
     }()
 }

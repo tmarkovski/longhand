@@ -1,16 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
-import {
-  ChevronDownIcon,
-  MonitorIcon,
-  MoonIcon,
-  PauseIcon,
-  PenLineIcon,
-  PlayIcon,
-  SunIcon,
-  XIcon,
-} from "lucide-react";
+import { ChevronDownIcon, CodeIcon, PauseIcon, PenLineIcon, PlayIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -20,8 +11,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import CodeBlock from "./CodeBlock.js";
+import { Segmented, ThemeToggle } from "./controls.js";
 import ExportDialog from "./ExportDialog.js";
 import type { ExportStyle } from "./export.js";
+import { PLATFORMS, snippetFor, type Platform, type SnippetParams } from "./snippets.js";
 import StylePicker, { styleOptions } from "./StylePicker.js";
 import type {
   EngineDescriptor,
@@ -118,135 +112,6 @@ interface RibbonLayout {
   totalPoints: number;
 }
 
-/** iOS-style segmented control: a radiogroup whose selected pill slides to
- * the picked option. The pill is measured off the selected button, so it
- * tracks variable label widths and the flex-stretched mobile layout. */
-function Segmented<T extends string>({
-  options,
-  value,
-  onChange,
-  "aria-label": ariaLabel,
-}: {
-  options: ReadonlyArray<{ value: T; label: string }>;
-  value: T;
-  onChange: (value: T) => void;
-  "aria-label": string;
-}) {
-  const groupRef = useRef<HTMLDivElement>(null);
-  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
-  const index = options.findIndex((option) => option.value === value);
-
-  useLayoutEffect(() => {
-    const group = groupRef.current;
-    if (!group) return;
-    const update = () => {
-      const button = group.querySelectorAll<HTMLElement>("[role=radio]")[index];
-      setPill(button ? { left: button.offsetLeft, width: button.offsetWidth } : null);
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(group);
-    return () => observer.disconnect();
-  }, [index, options]);
-
-  return (
-    <div
-      ref={groupRef}
-      role="radiogroup"
-      aria-label={ariaLabel}
-      className="relative inline-flex rounded-full bg-white/80 p-0.5 shadow-xs max-sm:flex-1 dark:bg-background/40"
-    >
-      {pill && (
-        <span
-          aria-hidden
-          className="absolute top-0.5 bottom-0.5 rounded-full bg-primary transition-[left,width] duration-200 ease-out"
-          style={{ left: pill.left, width: pill.width }}
-        />
-      )}
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="radio"
-          aria-checked={option.value === value}
-          className={cn(
-            "relative cursor-pointer rounded-full px-3 py-1 text-xs transition-colors max-sm:flex-1",
-            option.value === value
-              ? "text-primary-foreground"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-          onClick={() => onChange(option.value)}
-        >
-          {option.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-type Theme = "system" | "light" | "dark";
-
-const THEME_ICONS = { system: MonitorIcon, light: SunIcon, dark: MoonIcon } as const;
-
-/** One button cycling system → light → dark; the icon is the state. The
- * saved choice is applied before first paint by the inline script in
- * index.html, so this only has to keep the class and storage in sync.
- * `onApply` fires after the class changes, so the canvas can repaint
- * theme-dependent ink. */
-function ThemeToggle({ onApply }: { onApply?: () => void }) {
-  // Ref-routed so the media listener never calls a stale closure.
-  const onApplyRef = useRef(onApply);
-  onApplyRef.current = onApply;
-  const [theme, setTheme] = useState<Theme>(() => {
-    try {
-      const saved = localStorage.getItem("theme");
-      return saved === "light" || saved === "dark" ? saved : "system";
-    } catch {
-      return "system";
-    }
-  });
-
-  useEffect(() => {
-    const media = matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => {
-      document.documentElement.classList.toggle(
-        "dark",
-        theme === "dark" || (theme === "system" && media.matches),
-      );
-      onApplyRef.current?.();
-    };
-    apply();
-    if (theme !== "system") return;
-    media.addEventListener("change", apply);
-    return () => media.removeEventListener("change", apply);
-  }, [theme]);
-
-  function cycle() {
-    const next: Theme = theme === "system" ? "light" : theme === "light" ? "dark" : "system";
-    setTheme(next);
-    try {
-      if (next === "system") localStorage.removeItem("theme");
-      else localStorage.setItem("theme", next);
-    } catch {
-      // Storage may be unavailable (private mode); the toggle still works
-      // for the session.
-    }
-  }
-
-  const Icon = THEME_ICONS[theme];
-  return (
-    <button
-      type="button"
-      className="cursor-pointer rounded-full p-1 transition-colors hover:text-foreground"
-      title={`theme: ${theme}`}
-      aria-label={`theme: ${theme}`}
-      onClick={cycle}
-    >
-      <Icon className="size-3.5" aria-hidden />
-    </button>
-  );
-}
-
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
@@ -301,6 +166,10 @@ export default function App() {
   const [engine, setEngine] = useState<EngineId>("calligrapher");
   const [descriptor, setDescriptor] = useState<EngineDescriptor | null>(null);
   const [seed, setSeed] = useState(42);
+  // "fresh" reshuffles the seed on every write (the classic new-take flow);
+  // "pinned" reuses the one in the field, for dialing in a take to carry
+  // into an app via the code panel. Editing the field pins automatically.
+  const [seedMode, setSeedMode] = useState<"fresh" | "pinned">("fresh");
   const [color, setColor] = useState<string | null>(RED_INK);
   const [customColor, setCustomColor] = useState(DEFAULT_INK);
   const [paper, setPaper] = useState<string | null>(null);
@@ -309,6 +178,8 @@ export default function App() {
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
   const [stroke, setStroke] = useState<RendererKind>("pen");
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [platform, setPlatform] = useState<Platform>("web");
 
   useEffect(() => {
     const worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
@@ -378,18 +249,34 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [color, thickness, stroke]);
 
-  // The canvas is sized by CSS, so rotation or a window resize changes it
-  // under a bitmap laid out for the old size; re-fit the line when that
-  // happens. Re-registered per status so refit sees the current one.
+  // The canvas is sized by CSS, so rotation, a window resize, or coming
+  // back from the build page (the router hides the studio, which zeroes
+  // the canvas) changes it under a bitmap laid out for the old size;
+  // re-fit the line when its size actually changes. Re-registered per
+  // status so refit sees the current one; the first observer callback is
+  // the initial measurement, not a change.
   useEffect(() => {
-    window.addEventListener("resize", refit);
-    return () => window.removeEventListener("resize", refit);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    let initial = true;
+    const observer = new ResizeObserver(() => {
+      if (initial) {
+        initial = false;
+        return;
+      }
+      refit();
+    });
+    observer.observe(canvas);
+    return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   /** Re-lay-out the finished line for the current canvas size and settings,
    * then repaint (or, mid-animation, let the running loop repaint). */
   function refit() {
+    // Hidden behind the build page: the canvas measures 0, so a layout now
+    // would cache garbage. The ResizeObserver refits again on return.
+    if (!canvasRef.current || canvasRef.current.clientWidth === 0) return;
     ribbonPathsRef.current = ribbonPathsRef.current.map(() => null);
     if (
       (status !== "ready" && status !== "writing" && status !== "paused") ||
@@ -592,9 +479,9 @@ export default function App() {
     workerRef.current?.postMessage({ type: "engine", engine: next });
   }
 
-  /** Generate and write the line. Every write draws a fresh seed (write and
-   * shuffle used to be separate buttons); the seed lands in state so a share
-   * link can reproduce the exact take. */
+  /** Generate and write the line. A fresh seed by default (every write is
+   * a new take); a pinned seed reproduces the exact take, which is what
+   * the code panel hands to the SDKs. */
   function write() {
     const supported = alphabetRef.current;
     const cleaned = [...text].filter((c) => supported.has(c)).join("");
@@ -603,7 +490,7 @@ export default function App() {
       setNote("dropped characters this engine can't write");
     }
     if (cleaned.trim().length === 0) return;
-    const nextSeed = Math.floor(Math.random() * 1_000_000);
+    const nextSeed = seedMode === "pinned" ? seed : Math.floor(Math.random() * 1_000_000);
     setSeed(nextSeed);
     const request: WriteRequest = {
       type: "write",
@@ -657,6 +544,23 @@ export default function App() {
     };
   }
 
+  /** The studio's current settings, shaped for the snippet generators. */
+  function snippetParams(): SnippetParams {
+    return {
+      engine,
+      text,
+      bias: LEGIBILITY[legibility],
+      legibility,
+      style,
+      seed,
+      renderer: stroke,
+      thickness,
+      speed,
+      ink: color,
+      paper,
+    };
+  }
+
   const busy = status === "loading" || status === "warming";
   const options = styleOptions(descriptor);
   const styleLabel = options.find((option) => option.id === style)?.label ?? "style";
@@ -668,11 +572,20 @@ export default function App() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-7 sm:px-6 sm:py-10">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Longhand</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          AI handwriting synthesis in your browser. yours to export in any format, free
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Longhand</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            AI handwriting synthesis in your browser. yours to export in any format, free
+          </p>
+        </div>
+        <a
+          href="#/build"
+          className="mt-1 flex shrink-0 items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40"
+        >
+          <CodeIcon className="size-3.5" aria-hidden />
+          build with it
+        </a>
       </header>
 
       {/* The paper: the canvas up top, and below it — in real layout, so
@@ -885,6 +798,35 @@ export default function App() {
                   onChange={setStroke}
                 />
               </div>
+              {/* The take's identity: pinned, the same seed rewrites the same
+                  strokes (here and in the SDKs); fresh, every write rolls a
+                  new one. Typing a seed pins it. */}
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="w-16 shrink-0">seed</span>
+                <Input
+                  className="h-7 w-24 rounded-full bg-white/80 px-3 text-xs shadow-xs md:text-xs dark:bg-background/40"
+                  aria-label="seed"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={String(seed)}
+                  onChange={(event) => {
+                    // Full UInt32 range: a seed minted by the Swift SDK
+                    // must round-trip into the studio unchanged.
+                    const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
+                    setSeed(Math.min(digits === "" ? 0 : Number(digits), 4294967295));
+                    setSeedMode("pinned");
+                  }}
+                />
+                <Segmented
+                  aria-label="seed mode"
+                  options={[
+                    { value: "fresh", label: "fresh" },
+                    { value: "pinned", label: "pinned" },
+                  ]}
+                  value={seedMode}
+                  onChange={setSeedMode}
+                />
+              </div>
               {/* Eight fixed-size swatches only fit beside their label in a
                   full-width (md) grid column; below that each palette takes
                   a whole row, and on phones the swatches shrink a step so
@@ -966,6 +908,48 @@ export default function App() {
                 </div>
               </div>
             </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* The workbench payoff: the studio settings, emitted as SDK code.
+          The engines are parity-locked across TypeScript and Swift, so the
+          seed above reproduces this exact take anywhere. */}
+      <Collapsible
+        open={codeOpen}
+        onOpenChange={setCodeOpen}
+        className="rounded-3xl bg-[oklch(0.93_0_0)] shadow-sm dark:bg-[oklch(0.23_0_0)]"
+      >
+        <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm">
+          <span className="font-medium">use in your app</span>
+          <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
+            this exact take as code · seed {seed}
+          </span>
+          <ChevronDownIcon
+            className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-180"
+            aria-hidden
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="flex flex-col gap-3 border-t px-4 pt-3.5 pb-4">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <Segmented
+                aria-label="platform"
+                options={PLATFORMS}
+                value={platform}
+                onChange={setPlatform}
+              />
+              <span className="text-xs">
+                same seed, same strokes — the engines are parity-locked across platforms
+              </span>
+            </div>
+            <CodeBlock code={snippetFor(platform, snippetParams())} />
+            <p className="text-xs text-muted-foreground">
+              write with a <span className="font-medium">pinned</span> seed to keep this take ·{" "}
+              <a className="underline underline-offset-2 hover:text-foreground" href="#/build">
+                full setup guide
+              </a>
+            </p>
           </div>
         </CollapsibleContent>
       </Collapsible>

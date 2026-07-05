@@ -14,7 +14,7 @@
  * sized from the ribbon's real extent — and the mask's dash animates.
  */
 
-import type { InkLine } from "@longhand/ink-core";
+import type { InkLine } from "../../ink-core/src/index.js";
 import { layoutLine, penStrokes, type LineSvgOptions } from "./svg.js";
 import { ribbonOutline, ribbonPath, RIBBON_WIDTH } from "./ribbon.js";
 

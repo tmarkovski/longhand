@@ -11,7 +11,7 @@
  * `ink`/`background` so the file looks right anywhere.
  */
 
-import { lineBounds, transformLine, type InkLine } from "@longhand/ink-core";
+import { lineBounds, transformLine, type InkLine } from "../../ink-core/src/index.js";
 import { penWidths, type PenWidthOptions } from "./index.js";
 import { ribbonPath, RIBBON_WIDTH } from "./ribbon.js";
 

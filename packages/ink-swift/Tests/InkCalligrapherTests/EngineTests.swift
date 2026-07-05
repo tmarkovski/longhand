@@ -41,8 +41,10 @@ import Testing
     }
 
     /// Real-time streaming needs 125 steps/sec (the web app reveals one
-    /// step per 8ms). The engine target compiles with -O even in debug
-    /// (see Package.swift), so this also catches that flag going missing.
+    /// step per 8ms). Debug builds run -Onone (no unsafeFlags in a
+    /// remotely-consumable manifest), which misses the bar by design, so
+    /// the gate only exists in release runs: `swift test -c release`.
+    #if !DEBUG
     @Test func sustainsAtLeast125StepsPerSecond() throws {
         let writer = try model.writer(
             "the quick brown fox jumps over the lazy dog then keeps on going",
@@ -60,6 +62,7 @@ import Testing
         print("engine speed: \(Int(stepsPerSecond)) steps/sec over \(steps) steps")
         #expect(stepsPerSecond > 125)
     }
+    #endif
 }
 
 private extension Duration {

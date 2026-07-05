@@ -12,6 +12,7 @@ public enum GravesError: Error, CustomStringConvertible {
     case unknownStyle(Int)
     case missingStyleTensor(String)
     case textTooLong(encodedLength: Int, max: Int)
+    case missingBundledWeights
 
     public var description: String {
         switch self {
@@ -19,6 +20,8 @@ public enum GravesError: Error, CustomStringConvertible {
         case .missingStyleTensor(let name): return "missing style tensor \(name)"
         case .textTooLong(let encodedLength, let max):
             return "encoded text length \(encodedLength) exceeds \(max)"
+        case .missingBundledWeights:
+            return "graves-v1.bin is missing from the package resources"
         }
     }
 }
@@ -170,8 +173,12 @@ public final class GravesWriter {
     }
 
     /// Run to termination (or the step budget) and return all offsets.
+    /// The default budget floors at 4 characters — very short text often
+    /// needs more than its own step allowance to finish a stroke — and
+    /// matches the TS engine and the web app's worker, so a `write()`
+    /// reproduces an on-screen take exactly.
     public func run(maxSteps: Int? = nil) -> [StrokeOffset] {
-        let limit = maxSteps ?? STEPS_PER_CHARACTER * text.count
+        let limit = maxSteps ?? STEPS_PER_CHARACTER * max(text.count, 4)
         var offsets: [StrokeOffset] = []
         for _ in 0 ..< limit {
             guard let offset = step() else { break }

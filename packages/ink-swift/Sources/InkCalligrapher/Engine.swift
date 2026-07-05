@@ -12,12 +12,15 @@ public enum CalligrapherError: Error, CustomStringConvertible {
     case missingTensor(String)
     case missingSparseTensor(String)
     case unknownStyle(Int)
+    case missingBundledWeights
 
     public var description: String {
         switch self {
         case .missingTensor(let name): return "missing tensor \(name)"
         case .missingSparseTensor(let name): return "missing sparse tensor \(name)"
         case .unknownStyle(let style): return "unknown style \(style)"
+        case .missingBundledWeights:
+            return "calligrapher-v1.bin is missing from the package resources"
         }
     }
 }
