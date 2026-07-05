@@ -5,6 +5,7 @@
   "scripts": {
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "gen:assets": "uv run --directory tools python export_weights.py && uv run --directory tools python export_weights.py --out ../apps/web/public/model/graves-v1.bin && uv run --directory tools python make_goldens.py"
+    "gen:goldens": "uv run --directory tools python make_goldens.py && pnpm --filter @longhand/ink-calligrapher exec tsx scripts/export_swift_goldens.ts && pnpm --filter @longhand/ink-render exec tsx scripts/export_swift_goldens.ts",
+    "gen:weights": "uv run --directory tools python export_weights.py"
   }
 }
