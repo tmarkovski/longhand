@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 import CodeDialog from "./CodeDialog.js";
 import {
   ChipLabel,
-  chipLeftClass,
+  chipClass,
   chipRightClass,
   chipSlotClass,
   Segmented,
@@ -805,9 +805,9 @@ export default function App() {
         </div>
         {/* Below the wordmark row, so it can run the full width. */}
         <p className="mt-1 text-sm text-muted-foreground">
-          AI handwriting synthesis in your browser or native on your devices. export in
-          any still or animated format, or use the SDK to build it directly into your
-          app, all free
+          ai handwriting synthesis in your browser or directly on your device. export to
+          any still or animated format, or integrate it into your app with the sdk — all
+          free.
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground/70">
           based on{" "}
@@ -917,20 +917,21 @@ export default function App() {
           className="block h-[clamp(140px,20vh,180px)] w-full sm:h-[clamp(170px,30vh,250px)]"
         />
         <div className="flex h-12 items-center gap-3 px-3 pb-1">
+          {/* In flow, unlike the right trio: its unroll pushes the status
+              text along for the ride (a welcome nudge for text, where it
+              would be displacement for a button target). */}
           {(status === "ready" || status === "writing" || status === "paused") &&
             offsetsRef.current.length > 0 && (
-              <div className={chipSlotClass}>
-                <Button
-                  variant="outline"
-                  className={chipLeftClass}
-                  title={status === "writing" ? "pause" : "play"}
-                  aria-label={status === "writing" ? "pause" : "play"}
-                  onClick={togglePlayback}
-                >
-                  {status === "writing" ? <PauseIcon /> : <PlayIcon />}
-                  <ChipLabel>{status === "writing" ? "pause" : "play"}</ChipLabel>
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                className={chipClass}
+                title={status === "writing" ? "pause" : "play"}
+                aria-label={status === "writing" ? "pause" : "play"}
+                onClick={togglePlayback}
+              >
+                {status === "writing" ? <PauseIcon /> : <PlayIcon />}
+                <ChipLabel>{status === "writing" ? "pause" : "play"}</ChipLabel>
+              </Button>
             )}
           <p
             role="status"

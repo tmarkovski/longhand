@@ -10,19 +10,22 @@ import { cn } from "@/lib/utils";
  * step lighter than the card instead. Borderless, the 32px circle is icon
  * (16) + padding (16).
  *
- * Each chip is absolutely anchored inside a fixed 32px slot (chipSlotClass
- * on the wrapper), so the unrolling pill expands OVER the strip instead of
- * pushing its neighbors — a pointer traveling the row never has its target
- * move away from it. Left-anchored chips unroll rightward; right-anchored
- * ones pin the icon at the right edge and roll the label out to its left
- * (.chip-reverse flips the flex order and the label's gap side). */
-const chipClass =
+ * Chips whose neighbors are buttons are absolutely anchored inside a fixed
+ * 32px slot (chipSlotClass on the wrapper), so the unrolling pill expands
+ * OVER the strip instead of pushing them — a pointer traveling the row
+ * never has its target move away from it. Right-anchored chips pin the
+ * icon at the right edge and roll the label out to its left (.chip-reverse
+ * flips the flex order and the label's gap side).
+ *
+ * A chip whose only neighbor is text (the play chip, beside the status
+ * line) stays IN flow: its left edge holds still while the pill grows
+ * rightward, and the text rides the same width transition out and back. */
+export const chipClass =
   "chip h-8 gap-0 rounded-full border-0 bg-white/90 px-2 shadow-sm dark:bg-muted/90 dark:hover:bg-[oklch(0.32_0_0)]";
 export const chipSlotClass = "relative size-8 shrink-0";
 // w-max: an absolute element shrink-wraps against its containing block (the
 // 32px slot), which would clamp the unroll; max-content sizes it to its own
 // icon + label instead.
-export const chipLeftClass = cn(chipClass, "absolute top-0 left-0 w-max");
 export const chipRightClass = cn(chipClass, "chip-reverse absolute top-0 right-0 w-max");
 
 /** A chip's unrolling label. Hidden from the accessibility tree: the chips
