@@ -794,10 +794,10 @@ export default function App() {
           {/* Lowercase as a wordmark, like the rest of the studio's voice;
               in prose (the guide, this subtitle) the name stays a normal
               capitalized noun. */}
-          <h1 className="text-2xl font-semibold tracking-tight">longhand</h1>
+          <h1 className="font-heading text-2xl font-medium tracking-tight italic">longhand</h1>
           <a
             href="#/build"
-            className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-card/80 px-3 py-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40"
           >
             <CodeIcon className="size-3.5" aria-hidden />
             build with it
@@ -830,7 +830,7 @@ export default function App() {
           strip's height is fixed so the canvas doesn't shift when buttons
           come and go. */}
       <div
-        className="overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-card"
+        className="overflow-hidden rounded-2xl bg-card shadow-sm"
         style={paper ? { background: paper } : undefined}
       >
         <div className="flex items-center gap-2 px-4 pt-3">
@@ -845,9 +845,12 @@ export default function App() {
             style={{ color: color ?? (paper ? defaultInk(paper) : undefined) }}
             aria-hidden
           />
+          {/* The notebook rule: a faint baseline under the words, drawn
+              from currentColor so it's always a wash of the ink they're
+              typed in (and stays legible on any chosen paper). */}
           <Input
             ref={textInputRef}
-            className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0.5 text-base focus-visible:ring-0 md:text-base dark:bg-transparent"
+            className="h-10 min-w-0 flex-1 rounded-none border-0 border-b border-current/15 bg-transparent px-0.5 text-base focus-visible:border-current/30 focus-visible:ring-0 md:text-base dark:bg-transparent"
             style={{
               color: color ?? (paper ? defaultInk(paper) : undefined),
               caretColor: color ?? (paper ? defaultInk(paper) : undefined),
@@ -891,7 +894,7 @@ export default function App() {
               empty tap can tell "focus the line" from "wag the pen". */}
           <Button
             variant="outline"
-            className="relative rounded-full border-0 bg-white/90 shadow-sm dark:bg-muted/90 dark:hover:bg-[oklch(0.32_0_0)]"
+            className="relative rounded-full border-0 bg-card/90 shadow-sm dark:bg-muted/90 dark:hover:bg-[oklch(0.32_0.012_70)]"
             onMouseDown={(event) => event.preventDefault()}
             onClick={write}
             disabled={busy}
@@ -906,7 +909,7 @@ export default function App() {
                 line on the paper, and only a rewrite can catch it up. */}
             {stale && !busy && (
               <span
-                className="take-stale-dot absolute top-0 right-0.5 size-2 rounded-full bg-amber-500 dark:bg-amber-400"
+                className="take-stale-dot absolute top-0 right-0.5 size-2 rounded-full bg-[oklch(0.55_0.17_29)] dark:bg-[oklch(0.7_0.15_29)]"
                 aria-hidden
               />
             )}
@@ -982,12 +985,12 @@ export default function App() {
       <Collapsible
         open={optionsOpen}
         onOpenChange={setOptionsOpen}
-        className="rounded-3xl bg-[oklch(0.93_0_0)] shadow-sm dark:bg-[oklch(0.23_0_0)]"
+        className="rounded-2xl bg-[oklch(0.93_0.012_85)] shadow-sm dark:bg-[oklch(0.235_0.012_70)]"
       >
         {/* Collapsed, the trigger IS the card, so the hover tint covers it
             corner to corner; open, the trigger is just the header row and
             the tint stops at the divider (square bottom corners there). */}
-        <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 rounded-3xl px-4 py-3 text-sm transition-colors hover:bg-foreground/5 data-panel-open:rounded-b-none">
+        <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-colors hover:bg-foreground/5 data-panel-open:rounded-b-none">
           <span className="font-medium">options</span>
           {/* The collapsed state's whole job: a one-line readout of the
               settings. Open, the full controls say the same thing, so the
@@ -1165,7 +1168,7 @@ export default function App() {
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span className="w-16 shrink-0">seed</span>
                 <Input
-                  className="h-7 w-24 rounded-full bg-white/80 px-3 text-xs shadow-xs md:text-xs dark:bg-background/40"
+                  className="h-7 w-24 rounded-full bg-card/80 px-3 text-xs shadow-xs md:text-xs dark:bg-background/40"
                   aria-label="seed"
                   inputMode="numeric"
                   autoComplete="off"
@@ -1190,7 +1193,7 @@ export default function App() {
                   className={cn(
                     "cursor-pointer rounded-full p-1.5 transition-colors",
                     seedMode === "pinned"
-                      ? "bg-white/80 text-foreground shadow-xs dark:bg-background/40"
+                      ? "bg-card/80 text-foreground shadow-xs dark:bg-background/40"
                       : "hover:text-foreground",
                   )}
                   onClick={() => setSeedMode(seedMode === "pinned" ? "fresh" : "pinned")}

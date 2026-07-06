@@ -2,12 +2,21 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/fraunces";
+@import "@fontsource-variable/fraunces/wght-italic.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-    --font-heading: var(--font-sans);
+    /* Headings (the wordmark, dialog titles) get a serif with some hand in
+       it; everything operational stays sans. */
+    --font-heading: 'Fraunces Variable', ui-serif, Georgia, serif;
     --font-sans: 'Geist Variable', sans-serif;
+    /* Paper on a desk casts warm shadow, not neutral black: the raised
+       cards and chips keep their elevation but lose the stock gray. A
+       crisp contact line under a soft ambient falloff. */
+    --shadow-xs: 0 1px 2px 0 oklch(0.35 0.04 80 / 0.07), 0 2px 6px -1px oklch(0.35 0.04 80 / 0.05);
+    --shadow-sm: 0 1px 2px 0 oklch(0.35 0.04 80 / 0.09), 0 4px 14px -2px oklch(0.35 0.04 80 / 0.07);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,25 +58,29 @@
 }
 
 :root {
-    /* A hair darker than the white paper card, so the canvas floats. */
-    --background: oklch(0.98 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.95 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
+    /* Every neutral carries a touch of warm paper chroma (hue ~85), so the
+       page reads as cream stationery, not the stock zinc theme. The
+       background stays a hair darker than the paper card so the canvas
+       floats. Primary is an actual color — fountain-pen blue-black — spent
+       on the segmented pills, slider fill, focus rings, and selection. */
+    --background: oklch(0.972 0.008 90);
+    --foreground: oklch(0.15 0.007 80);
+    --card: oklch(0.994 0.004 95);
+    --card-foreground: oklch(0.15 0.007 80);
+    --popover: oklch(0.994 0.004 95);
+    --popover-foreground: oklch(0.15 0.007 80);
+    --primary: oklch(0.38 0.08 265);
+    --primary-foreground: oklch(0.985 0.005 90);
+    --secondary: oklch(0.955 0.01 88);
+    --secondary-foreground: oklch(0.22 0.01 80);
+    --muted: oklch(0.945 0.011 88);
+    --muted-foreground: oklch(0.54 0.018 78);
+    --accent: oklch(0.95 0.012 88);
+    --accent-foreground: oklch(0.22 0.01 80);
     --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --border: oklch(0.9 0.012 85);
+    --input: oklch(0.9 0.012 85);
+    --ring: oklch(0.55 0.06 265);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -85,24 +98,27 @@
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
+    /* Not the gray elevator: a desk at night. The same warm hue family as
+       light mode, one notch above black, with the ink accent lightened to
+       stay legible on the dark surfaces. */
+    --background: oklch(0.16 0.009 70);
+    --foreground: oklch(0.97 0.006 85);
+    --card: oklch(0.215 0.011 70);
+    --card-foreground: oklch(0.97 0.006 85);
+    --popover: oklch(0.215 0.011 70);
+    --popover-foreground: oklch(0.97 0.006 85);
+    --primary: oklch(0.78 0.06 265);
+    --primary-foreground: oklch(0.22 0.04 265);
+    --secondary: oklch(0.275 0.012 70);
+    --secondary-foreground: oklch(0.97 0.006 85);
+    --muted: oklch(0.275 0.012 70);
+    --muted-foreground: oklch(0.71 0.012 80);
+    --accent: oklch(0.275 0.012 70);
+    --accent-foreground: oklch(0.97 0.006 85);
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --border: oklch(0.95 0.015 85 / 12%);
+    --input: oklch(0.95 0.015 85 / 16%);
+    --ring: oklch(0.62 0.05 265);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);
@@ -124,12 +140,26 @@
     }
   body {
     @apply bg-background text-foreground;
+    /* A whisper of paper grain over the page background — the cards are
+       opaque, so the canvas and every control surface stay perfectly
+       clean (exports never see it). Inline SVG noise, ~300 bytes. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.1'/%3E%3C/svg%3E");
     }
   html {
     @apply font-sans;
     /* Reserve the scrollbar's column up front, so the page doesn't shift
        sideways the moment opening the options panel makes it scrollable. */
     scrollbar-gutter: stable;
+    }
+  /* Selected text is ink on paper, and the caret writes in ink. On the
+     text line both are overridden inline by the chosen ink color. */
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    }
+  input,
+  textarea {
+    caret-color: var(--primary);
     }
 }
 

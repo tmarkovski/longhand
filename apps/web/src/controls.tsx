@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
  * line) stays IN flow: its left edge holds still while the pill grows
  * rightward, and the text rides the same width transition out and back. */
 export const chipClass =
-  "chip h-8 gap-0 rounded-full border-0 bg-white/90 px-2 shadow-sm dark:bg-muted/90 dark:hover:bg-[oklch(0.32_0_0)]";
+  "chip h-8 gap-0 rounded-full border-0 bg-card/90 px-2 shadow-sm dark:bg-muted/90 dark:hover:bg-[oklch(0.32_0.012_70)]";
 export const chipSlotClass = "relative size-8 shrink-0";
 // w-max: an absolute element shrink-wraps against its containing block (the
 // 32px slot), which would clamp the unroll; max-content sizes it to its own
@@ -90,7 +90,7 @@ export function Segmented<T extends string>({
       ref={groupRef}
       role="radiogroup"
       aria-label={ariaLabel}
-      className="relative inline-flex rounded-full bg-white/80 p-0.5 shadow-xs max-sm:flex-1 dark:bg-background/40"
+      className="relative inline-flex rounded-full bg-card/80 p-0.5 shadow-xs max-sm:flex-1 dark:bg-background/40"
     >
       {pill && (
         <span

@@ -57,7 +57,7 @@ const SWIFT_PACKAGE_SNIPPET = [
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      <h2 className="font-heading text-lg font-semibold tracking-tight">{title}</h2>
       {children}
     </section>
   );
@@ -75,10 +75,10 @@ function ModelCard({
   note: string;
 }) {
   return (
-    <div className="flex flex-1 flex-col gap-2 rounded-3xl bg-[oklch(0.93_0_0)] p-5 shadow-sm dark:bg-[oklch(0.23_0_0)]">
+    <div className="flex flex-1 flex-col gap-2 rounded-2xl bg-[oklch(0.93_0.012_85)] p-5 shadow-sm dark:bg-[oklch(0.235_0.012_70)]">
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="font-semibold">{name}</h3>
-        <span className="rounded-full bg-white/80 px-2.5 py-0.5 text-xs text-muted-foreground shadow-xs dark:bg-background/40">
+        <span className="rounded-full bg-card/80 px-2.5 py-0.5 text-xs text-muted-foreground shadow-xs dark:bg-background/40">
           {size}
         </span>
       </div>
@@ -148,7 +148,7 @@ export default function BuildPage() {
             <ArrowLeftIcon className="size-3.5" aria-hidden />
             studio
           </a>
-          <h1 className="text-2xl font-semibold tracking-tight">Build with Longhand</h1>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">Build with Longhand</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             the studio's handwriting engines as packages for your own app — installed straight
             from git, weights included, no servers and no keys
@@ -255,7 +255,7 @@ export default function BuildPage() {
           reproduces it stroke for stroke — the TypeScript and Swift engines are parity-locked
           to the float, so a pinned seed is a portable take.
         </p>
-        <div className="overflow-x-auto rounded-3xl bg-[oklch(0.93_0_0)] shadow-sm dark:bg-[oklch(0.23_0_0)]">
+        <div className="overflow-x-auto rounded-2xl bg-[oklch(0.93_0.012_85)] shadow-sm dark:bg-[oklch(0.235_0.012_70)]">
           <table className="w-full min-w-[560px] border-collapse text-sm">
             <thead>
               <tr className="text-left text-xs text-muted-foreground">
