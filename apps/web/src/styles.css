@@ -239,3 +239,20 @@
     transition: none;
   }
 }
+/* The write button's "settings drifted from the line on the paper" dot:
+ * pops in like a notification badge. */
+.take-stale-dot {
+  animation: dot-pop 200ms ease;
+}
+
+@keyframes dot-pop {
+  from {
+    transform: scale(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .take-stale-dot {
+    animation: none;
+  }
+}

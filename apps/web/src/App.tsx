@@ -213,6 +213,18 @@ export default function App() {
   const [thickness, setThickness] = useState(BOOT_TAKE?.thickness ?? DEFAULT_THICKNESS);
   const [speed, setSpeed] = useState(BOOT_TAKE?.speed ?? DEFAULT_SPEED);
   const [stroke, setStroke] = useState<RendererKind>("pen");
+  // What the line on the canvas was generated FROM, stamped when each write
+  // is posted. Ink, paper, thickness, stroke, and speed restyle the finished
+  // line in place, so they're not part of the stamp — but these five only
+  // apply on the next write, and when the current picks drift from the
+  // stamp, a dot on the write button says "write again to see this".
+  const [take, setTake] = useState<{
+    engine: EngineId;
+    text: string;
+    legibility: Legibility;
+    style: number | null;
+    seed: number;
+  } | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   // Bumped when "write" is tapped with nothing on the line and the caret
   // already there: keying the pen icon on it restarts the wiggle animation.
@@ -267,6 +279,13 @@ export default function App() {
                 style: nextStyle,
                 seed: nextSeed,
               } satisfies WriteRequest);
+              setTake({
+                engine: message.engine.id,
+                text: cleaned,
+                legibility: boot.legibility,
+                style: nextStyle,
+                seed: nextSeed,
+              });
             }
           } else {
             // Each engine starts in its native ink look.
@@ -647,6 +666,7 @@ export default function App() {
       seed: nextSeed,
     };
     workerRef.current?.postMessage(request);
+    setTake({ engine, text: cleaned, legibility, style, seed: nextSeed });
   }
 
   /** Play/pause: freeze the pen mid-line, pick up where it stopped, or —
@@ -720,6 +740,16 @@ export default function App() {
   }
 
   const busy = status === "loading" || status === "warming";
+  // A diff, not a sticky flag: change legibility and change it back, and the
+  // dot goes out. An unlocked seed never counts — every write reshuffles it
+  // by design, so the field differing from the take is the normal state.
+  const stale =
+    take !== null &&
+    (take.engine !== engine ||
+      take.text !== text ||
+      take.legibility !== legibility ||
+      take.style !== style ||
+      (seedMode === "pinned" && take.seed !== seed));
   const options = styleOptions(descriptor);
   const styleLabel = options.find((option) => option.id === style)?.label ?? "style";
   const fmt = (value: number) => String(Number(value.toFixed(2)));
@@ -797,13 +827,25 @@ export default function App() {
               empty tap can tell "focus the line" from "wag the pen". */}
           <Button
             variant="outline"
-            className="rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
+            className="relative rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
             onMouseDown={(event) => event.preventDefault()}
             onClick={write}
             disabled={busy}
-            title="every write is a new take"
+            title={
+              stale && !busy
+                ? "settings changed · write again to apply"
+                : "every write is a new take"
+            }
           >
             write
+            {/* The notification dot: the picks above no longer match the
+                line on the paper, and only a rewrite can catch it up. */}
+            {stale && !busy && (
+              <span
+                className="take-stale-dot absolute top-0 right-0.5 size-2 rounded-full bg-amber-500 dark:bg-amber-400"
+                aria-hidden
+              />
+            )}
           </Button>
         </div>
         <canvas
@@ -873,7 +915,10 @@ export default function App() {
         onOpenChange={setOptionsOpen}
         className="rounded-3xl bg-[oklch(0.93_0_0)] shadow-sm dark:bg-[oklch(0.23_0_0)]"
       >
-        <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm">
+        {/* Collapsed, the trigger IS the card, so the hover tint covers it
+            corner to corner; open, the trigger is just the header row and
+            the tint stops at the divider (square bottom corners there). */}
+        <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 rounded-3xl px-4 py-3 text-sm transition-colors hover:bg-foreground/5 data-panel-open:rounded-b-none">
           <span className="font-medium">options</span>
           {/* The collapsed state's whole job: a one-line readout of the
               settings. Open, the full controls say the same thing, so the

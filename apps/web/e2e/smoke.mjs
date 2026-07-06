@@ -4,7 +4,11 @@
  * engines and stroke types, replays, restyles, locks a seed, reads the code
  * dialog's snippets, opens the build page, replays a share link both live
  * and from a cold load, and checks ink actually lands on the canvas with
- * no console errors.
+ * no console errors. Along the way it watches the write button's stale-take
+ * dot: on when a generative setting (model, style, legibility, text, locked
+ * seed) drifts from the rendered line, off after a write or when the
+ * setting drifts back, never for in-place restyles (ink, thickness,
+ * stroke, paper, speed).
  *
  *   node e2e/smoke.mjs [baseUrl] [screenshotPath]
  */
@@ -85,6 +89,15 @@ if ((await page.locator(".pen-wiggle").count()) !== 1)
 
 await page.keyboard.type("a line of ink, thinking as it goes");
 
+// The stale-take dot compares against the rendered line; with no take yet
+// there is nothing to be stale against, typed text or not.
+const staleDot = page.locator(".take-stale-dot");
+const expectDot = async (want, label) => {
+  if ((await staleDot.count()) !== (want ? 1 : 0))
+    fail(`stale dot should be ${want ? "on" : "off"} ${label}`);
+};
+await expectDot(false, "before the first take");
+
 // Every control besides the text row lives in a collapsed options panel;
 // open it once and leave it open for the whole run.
 await page.getByRole("button", { name: /^options/ }).click();
@@ -121,6 +134,8 @@ await page.waitForTimeout(500);
 const calligrapherRibbonInk = await inkPixels();
 await page.getByRole("radio", { name: "pen", exact: true }).click();
 await page.waitForTimeout(500);
+// Stroke restyles the line in place, so it never trips the stale dot.
+await expectDot(false, "after a stroke flip");
 
 // Play on a finished line rewinds and animates it again: shortly after
 // clicking there should be some ink, but much less than the finished line,
@@ -139,20 +154,26 @@ if ((await page.locator("footer").textContent()) !== seedBeforeReplay)
 // re-populates, and its null style (freehand) is the default.
 await selectEngine("longhand");
 await waitForIdle();
+// The calligrapher's line is still on the paper but the model pick has
+// drifted from it — the dot says a rewrite is needed to catch up.
+await expectDot(true, "after switching model under a rendered take");
 const gravesStyle = await page.locator(".style-picker-trigger").getAttribute("aria-label");
 if (gravesStyle !== "handwriting style: freehand")
   fail(`graves default style is "${gravesStyle}", expected freehand`);
 await writeButton.click();
 await page.waitForTimeout(10_000);
 const freehandInk = await inkPixels();
+await expectDot(false, "after the freehand write");
 
 // Styled write (uses the baked primed state), via the preview picker.
 // Every write draws a fresh seed, so the footer should change.
 await page.click(".style-picker-trigger");
 await page.getByRole("option", { name: "style 3", exact: true }).click();
+await expectDot(true, "after picking a new style");
 await writeButton.click();
 await page.waitForTimeout(18_000);
 const styledInk = await inkPixels();
+await expectDot(false, "after the styled write");
 if ((await page.locator("footer").textContent()) === seedBeforeReplay)
   fail("write reused the previous seed — every write should reshuffle");
 
@@ -162,10 +183,19 @@ await page.getByRole("radio", { name: "ink color: blue" }).click();
 await page.getByLabel("thickness").press("End");
 await page.waitForTimeout(1_000);
 const restyledInk = await inkPixels();
+await expectDot(false, "after ink and thickness restyles");
+
+// The dot is a diff, not a sticky flag: drift legibility away and back
+// and it goes out on its own.
+await page.getByRole("radio", { name: "high" }).click();
+await expectDot(true, "after changing legibility");
+await page.getByRole("radio", { name: "normal" }).click();
+await expectDot(false, "after changing legibility back");
 
 // And back: the calligrapher engine is cached, so this is instant.
 await selectEngine("calligrapher");
 await waitForIdle();
+await expectDot(true, "after switching back to calligrapher");
 
 // Seed locking: typing a seed closes the chain-link lock, and a write
 // keeps the seed (the footer carries the take's seed).
@@ -178,6 +208,7 @@ await writeButton.click();
 await page.waitForTimeout(2_500);
 if (!(await page.locator("footer").textContent()).includes("seed 12345"))
   fail("pinned write did not keep the seed");
+await expectDot(false, "after the pinned write");
 
 // Share copies a #/write link carrying the whole take, seed included.
 await page.getByRole("button", { name: "share this take" }).click();
