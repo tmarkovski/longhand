@@ -31,7 +31,7 @@ let package = Package(
             name: "InkGraves",
             dependencies: ["InkCore"],
             path: "packages/ink-swift/Sources/InkGraves",
-            resources: [.copy("../../../ink-graves/assets/graves-v1.bin")]
+            resources: [.copy("../../../ink-graves/assets/graves-v2.bin")]
         ),
         .target(
             name: "InkCalligrapher",

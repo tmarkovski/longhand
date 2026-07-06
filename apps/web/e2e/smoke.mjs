@@ -135,7 +135,7 @@ if (replayInk <= 0 || replayInk >= calligrapherPenInk * 0.8)
 if ((await page.locator("footer").textContent()) !== seedBeforeReplay)
   fail("replay changed the seed — it should reuse the same take");
 
-// Engine switch: the graves model loads (15 MB), the style picker
+// Engine switch: the graves model loads (3.6 MB), the style picker
 // re-populates, and its null style (freehand) is the default.
 await selectEngine("longhand");
 await waitForIdle();
@@ -146,7 +146,7 @@ await writeButton.click();
 await page.waitForTimeout(10_000);
 const freehandInk = await inkPixels();
 
-// Styled write (exercises priming in the worker), via the preview picker.
+// Styled write (uses the baked primed state), via the preview picker.
 // Every write draws a fresh seed, so the footer should change.
 await page.click(".style-picker-trigger");
 await page.getByRole("option", { name: "style 3", exact: true }).click();

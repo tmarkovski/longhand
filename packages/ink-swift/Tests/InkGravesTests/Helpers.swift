@@ -1,7 +1,8 @@
 /// Test fixtures shared with the TS engine: the CALW weights come from the
-/// target's bundled resource, and the MLX-generated golden vectors live in
-/// packages/ink-graves/test/goldens (gitignored; regenerate with
-/// `pnpm gen:goldens`), located here relative to this source file.
+/// target's bundled resource, and the MLX-generated golden vectors plus the
+/// f32 reference container live in packages/ink-graves/test/goldens
+/// (gitignored; regenerate with `pnpm gen:goldens` / `pnpm gen:weights`),
+/// located here relative to this source file.
 
 import Foundation
 import InkGraves
@@ -13,15 +14,26 @@ private let packagesDirectory = URL(fileURLWithPath: #filePath)
     .deletingLastPathComponent() // packages
 
 enum Fixtures {
-    /// Loaded through the public bundled-resource accessor, so the golden
-    /// suite also proves the bundle ships the canonical committed weights
-    /// (packages/ink-graves/assets) — drifted bytes could not match the
-    /// MLX-generated golden vectors.
+    /// The shipped asset (q8 weights + baked primed states), loaded through
+    /// the public bundled-resource accessor, so the suite also proves the
+    /// bundle ships the canonical committed weights
+    /// (packages/ink-graves/assets).
     static let assets: ModelAssets = {
         do {
             return try parseModelAssets(bundledGravesWeights())
         } catch {
             fatalError("failed to load bundled graves weights: \(error)")
+        }
+    }()
+
+    /// The float32 reference fixture: MLX golden parity only holds against
+    /// unquantized weights.
+    static let referenceAssets: ModelAssets = {
+        let url = packagesDirectory.appendingPathComponent("ink-graves/test/goldens/graves-f32.bin")
+        do {
+            return try parseModelAssets(Data(contentsOf: url))
+        } catch {
+            fatalError("failed to load the f32 reference weights (regenerate with `pnpm gen:weights`): \(error)")
         }
     }()
 }

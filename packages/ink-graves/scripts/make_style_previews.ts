@@ -53,8 +53,18 @@ const MAX_ATTEMPTS = 6;
 
 // Automatic retry catches two crisp failure signatures. A scribble the model
 // recovers from still passes both, so those seeds are re-picked by eye.
-// Re-check the overrides whenever TEXT or BIAS changes.
-const SEED_OVERRIDES = new Map<string, number>([["freehand", 44]]);
+// Re-check the overrides whenever TEXT, BIAS, or the shipped weights change
+// (current picks are for graves-v2: q8 weights + baked priming).
+const SEED_OVERRIDES = new Map<string, number>([
+  ["freehand", 44],
+  ["style-2", 47],
+  ["style-3", 45],
+  ["style-5", 46],
+  ["style-6", 51],
+  ["style-8", 47],
+  ["style-9", 44],
+  ["style-11", 47],
+]);
 
 /** Reason this line needs a new seed, or null if it looks healthy. */
 function rejectReason(offsets: ReturnType<GravesModel["write"]>): string | null {

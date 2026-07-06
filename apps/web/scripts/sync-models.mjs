@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const here = fileURLToPath(new URL(".", import.meta.url));
 const models = [
-  ["../../../packages/ink-graves/assets/graves-v1.bin", "graves-v1.bin"],
+  ["../../../packages/ink-graves/assets/graves-v2.bin", "graves-v2.bin"],
   ["../../../packages/ink-calligrapher/assets/calligrapher-v1.bin", "calligrapher-v1.bin"],
 ];
 

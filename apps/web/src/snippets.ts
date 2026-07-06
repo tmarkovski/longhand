@@ -84,7 +84,7 @@ const WEIGHTS_SUBPATH: Record<EngineId, string> = {
   calligrapher: `${NPM_PACKAGE}/calligrapher.bin`,
 };
 
-const WEIGHTS_SIZE: Record<EngineId, string> = { graves: "15 MB", calligrapher: "2.6 MB" };
+const WEIGHTS_SIZE: Record<EngineId, string> = { graves: "3.6 MB", calligrapher: "2.6 MB" };
 
 /** Swift string literals share JSON's escapes for quote/backslash/controls. */
 const quote = (text: string) => JSON.stringify(text);

@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { Cell, MAX_CHARS } from "../src/cell.js";
 import { GravesModel } from "../src/engine.js";
-import { loadAssets, loadGolden, worstDeviation, type GoldenCase } from "./helpers.js";
+import { loadGolden, loadReferenceAssets, worstDeviation, type GoldenCase } from "./helpers.js";
 
 const ATOL = 2e-3;
 const RTOL = 2e-2;
 
-const assets = loadAssets();
+// The f32 fixture, not the shipped q8 asset: quantization noise is far
+// outside the porting tolerances these goldens pin.
+const assets = loadReferenceAssets();
 
 function runCase(golden: GoldenCase) {
   const cell = new Cell(assets);

@@ -17,7 +17,7 @@
     "./ink-graves": "./packages/ink-graves/src/index.ts",
     "./ink-calligrapher": "./packages/ink-calligrapher/src/index.ts",
     "./ink-render": "./packages/ink-render/src/index.ts",
-    "./graves.bin": "./packages/ink-graves/assets/graves-v1.bin",
+    "./graves.bin": "./packages/ink-graves/assets/graves-v2.bin",
     "./calligrapher.bin": "./packages/ink-calligrapher/assets/calligrapher-v1.bin"
   },
   "scripts": {

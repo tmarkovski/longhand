@@ -87,28 +87,34 @@ Apple silicon).
 Model weights are committed package assets (`packages/ink-graves/assets`,
 `packages/ink-calligrapher/assets`) shared by every consumer: the web app
 syncs them into `public/model/` before `dev` and `build`, and the Swift
-package reads the same files. No weight generation is needed to run
-anything.
+package reads the same files. The Graves asset (`graves-v2.bin`, ~3.6 MB)
+stores int8 weights with a float32 scale per output column, dequantized at
+load, plus a baked primed state per style, so styled writes start instantly
+instead of teacher-forcing the style's strokes first. No weight generation
+is needed to run the app.
 
 ```sh
 git clone --recurse-submodules https://github.com/tmarkovski/longhand
 pnpm install
 pnpm gen:goldens       # golden test vectors, one time (MLX reference + Swift parity fixtures)
+pnpm gen:weights       # f32 reference fixture for the Graves golden tests, one time
 pnpm test              # TypeScript packages
 pnpm --filter @longhand/web dev
 ```
 
 For the Swift port, run `swift test -c release` at the repo root (after
-`gen:goldens`). Release is the fast loop: the manifest carries no
-unsafeFlags (remote consumers would reject them), so debug builds run the
-engines at -Onone — fine for debugging, ~20x slower through the parity
-suites, and the calligrapher perf gate compiles out. `pnpm gen:weights`
-regenerates the committed Graves weights from the submodule; it is only
-needed when the reference weights change.
+`gen:goldens` and `gen:weights`). Release is the fast loop: the manifest
+carries no unsafeFlags (remote consumers would reject them), so debug builds
+run the engines at -Onone — fine for debugging, ~20x slower through the
+parity suites, and the calligrapher perf gate compiles out. `pnpm
+gen:weights` exports both Graves artifacts from the submodule: the committed
+`graves-v2.bin`, and the gitignored float32 fixture the golden tests read
+(MLX parity tolerances only hold for unquantized weights).
 
-CI regenerates the golden vectors from the MLX reference on every run, so
-the golden tests double as a drift check on the committed weights. Pushes to
-`main` deploy to GitHub Pages via `.github/workflows/deploy.yml`.
+CI regenerates the golden vectors and the float32 fixture from the MLX
+reference on every run, so the golden tests always check the ports against a
+fresh oracle. Pushes to `main` deploy to GitHub Pages via
+`.github/workflows/deploy.yml`.
 
 ## License
 

@@ -46,7 +46,7 @@ const SWIFT_PACKAGE_SNIPPET = [
   "        dependencies: [",
   "            // Pick the engines you ship; each bundles its own weights.",
   "            .product(name: \"InkCalligrapher\", package: \"longhand\"), // 2.6 MB",
-  "            .product(name: \"InkGraves\", package: \"longhand\"), // 15 MB, optional",
+  "            .product(name: \"InkGraves\", package: \"longhand\"), // 3.6 MB, optional",
   "            .product(name: \"InkCore\", package: \"longhand\"),",
   "            .product(name: \"InkRender\", package: \"longhand\"),",
   "        ]",
@@ -175,7 +175,7 @@ export default function BuildPage() {
           />
           <ModelCard
             name="longhand"
-            size="15 MB"
+            size="3.6 MB"
             traits={[
               "13 primed styles plus an unprimed freehand mode",
               "looser, more human wander; tuned for the pen look",

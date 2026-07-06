@@ -6,7 +6,7 @@ import Foundation
 ///
 ///     let model = try GravesModel(assets: parseModelAssets(bundledGravesWeights()))
 public func bundledGravesWeights() throws -> Data {
-    guard let url = Bundle.module.url(forResource: "graves-v1", withExtension: "bin") else {
+    guard let url = Bundle.module.url(forResource: "graves-v2", withExtension: "bin") else {
         throw GravesError.missingBundledWeights
     }
     return try Data(contentsOf: url)

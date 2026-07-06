@@ -10,18 +10,23 @@ public let STEPS_PER_CHARACTER = 40
 
 public enum GravesError: Error, CustomStringConvertible {
     case unknownStyle(Int)
+    case stylePrimingUnavailable(Int)
     case missingStyleTensor(String)
+    case primedStateLength(got: Int, expected: Int)
     case textTooLong(encodedLength: Int, max: Int)
     case missingBundledWeights
 
     public var description: String {
         switch self {
         case .unknownStyle(let style): return "unknown style \(style)"
+        case .stylePrimingUnavailable(let style): return "style \(style) carries no priming data"
         case .missingStyleTensor(let name): return "missing style tensor \(name)"
+        case .primedStateLength(let got, let expected):
+            return "primed state length \(got), expected \(expected)"
         case .textTooLong(let encodedLength, let max):
             return "encoded text length \(encodedLength) exceeds \(max)"
         case .missingBundledWeights:
-            return "graves-v1.bin is missing from the package resources"
+            return "graves-v2.bin is missing from the package resources"
         }
     }
 }
@@ -104,14 +109,18 @@ public final class GravesWriter {
 
         let encoded: [Int32]
         var primeStrokes: [Float]? = nil
+        var primedState: [Float]? = nil
         if let style {
             guard let styleInfo = model.assets.styles.first(where: { $0.id == style }) else {
                 throw GravesError.unknownStyle(style)
             }
-            guard let tensor = model.assets.tensors[styleInfo.tensor] else {
-                throw GravesError.missingStyleTensor(styleInfo.tensor)
+            guard let tensorName = styleInfo.primed ?? styleInfo.tensor else {
+                throw GravesError.stylePrimingUnavailable(style)
             }
-            primeStrokes = tensor.data
+            guard let tensor = model.assets.tensors[tensorName] else {
+                throw GravesError.missingStyleTensor(tensorName)
+            }
+            if styleInfo.primed != nil { primedState = tensor.data } else { primeStrokes = tensor.data }
             encoded = model.encode(styleInfo.primer + " " + text)
         } else {
             encoded = model.encode(text)
@@ -124,12 +133,15 @@ public final class GravesWriter {
         self.chars = chars
         self.charLength = encoded.count
 
-        if let primeStrokes { prime(primeStrokes) }
+        if let primedState {
+            try restore(primedState)
+        } else if let primeStrokes {
+            prime(primeStrokes)
+        }
     }
 
-    /// Teacher-force the style's pen data through the cell, then draw the
-    /// first free-run input from the primed state (it is consumed as input,
-    /// never emitted — matching the reference).
+    /// Teacher-force the style's pen data through the cell (v1 containers),
+    /// then hand off to free running.
     private func prime(_ strokes: [Float]) {
         let steps = strokes.count / 3
         for t in 0 ..< steps {
@@ -142,6 +154,33 @@ public final class GravesWriter {
                 charLength: charLength
             )
         }
+        handoff()
+    }
+
+    /// Restore a baked primed state (v2 containers): the export pipeline
+    /// already teacher-forced the style's strokes, so styled writes start
+    /// instantly. Slice order must match STATE_LAYOUT in export_weights.py:
+    /// h1 c1 h2 c2 h3 c3 kappa w.
+    private func restore(_ baked: [Float]) throws {
+        let slices: [ReferenceWritableKeyPath<CellState, [Float]>] =
+            [\.h1, \.c1, \.h2, \.c2, \.h3, \.c3, \.kappa, \.w]
+        let expected = slices.reduce(0) { $0 + state[keyPath: $1].count }
+        guard baked.count == expected else {
+            throw GravesError.primedStateLength(got: baked.count, expected: expected)
+        }
+        var offset = 0
+        for slice in slices {
+            let count = state[keyPath: slice].count
+            state[keyPath: slice] = Array(baked[offset ..< offset + count])
+            offset += count
+        }
+        handoff()
+    }
+
+    /// Shared tail of both priming paths: draw the first free-run input
+    /// from the primed state (it is consumed as input, never emitted —
+    /// matching the reference).
+    private func handoff() {
         cell.mdnParse(h3: state.h3, bias: bias, into: params)
         let sample = cell.mdnSample(params, rng: &rng)
         lastInput = (Float(sample.dx), Float(sample.dy), sample.eos ? 1 : 0)

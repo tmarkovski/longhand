@@ -83,12 +83,16 @@ export class GravesWriter {
 
     let encoded: Int32Array;
     let primeStrokes: Float32Array | null = null;
+    let primedState: Float32Array | null = null;
     if (style !== null) {
       const styleInfo = model.assets.styles.find((s) => s.id === style);
       if (!styleInfo) throw new Error(`unknown style ${style}`);
-      const tensor = model.assets.tensors.get(styleInfo.tensor);
-      if (!tensor) throw new Error(`missing style tensor ${styleInfo.tensor}`);
-      primeStrokes = tensor.data;
+      const tensorName = styleInfo.primed ?? styleInfo.tensor;
+      if (!tensorName) throw new Error(`style ${style} carries no priming data`);
+      const tensor = model.assets.tensors.get(tensorName);
+      if (!tensor) throw new Error(`missing style tensor ${tensorName}`);
+      if (styleInfo.primed) primedState = tensor.data;
+      else primeStrokes = tensor.data;
       encoded = model.encode(styleInfo.primer + " " + text);
     } else {
       encoded = model.encode(text);
@@ -100,7 +104,8 @@ export class GravesWriter {
     this.chars.set(encoded);
     this.charLength = encoded.length;
 
-    if (primeStrokes) this.prime(primeStrokes);
+    if (primedState) this.restore(primedState);
+    else if (primeStrokes) this.prime(primeStrokes);
   }
 
   /**
@@ -120,6 +125,32 @@ export class GravesWriter {
         this.charLength,
       );
     }
+    this.handoff();
+  }
+
+  /**
+   * Restore a baked primed state (v2 containers): the export pipeline
+   * already teacher-forced the style's strokes, so styled writes start
+   * instantly. Slice order must match STATE_LAYOUT in export_weights.py:
+   * h1 c1 h2 c2 h3 c3 kappa w.
+   */
+  private restore(baked: Float32Array): void {
+    const s = this.state;
+    const slices = [s.h1, s.c1, s.h2, s.c2, s.h3, s.c3, s.kappa, s.w];
+    let offset = 0;
+    for (const slice of slices) {
+      slice.set(baked.subarray(offset, offset + slice.length));
+      offset += slice.length;
+    }
+    if (offset !== baked.length) {
+      throw new Error(`primed state length ${baked.length}, expected ${offset}`);
+    }
+    this.handoff();
+  }
+
+  /** Shared tail of both priming paths: draw the first free-run input
+   * from the primed state (consumed as input, never emitted). */
+  private handoff(): void {
     this.cell.mdnParse(this.state.h3, this.bias, this.params);
     this.lastInput = this.cell.mdnSample(this.params, this.rng);
   }

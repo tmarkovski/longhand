@@ -11,7 +11,7 @@ private let ATOL = 2e-3
 private let RTOL = 2e-2
 
 @Suite struct GoldenTests {
-    @Test func parsesTheSharedWeightsContainer() throws {
+    @Test func parsesTheBundledWeightsContainer() throws {
         let assets = Fixtures.assets
         #expect(assets.alphabet.count == Cell.alphabetSize)
         // maxCharLen is the training-time text limit (75), unrelated to the
@@ -21,15 +21,26 @@ private let RTOL = 2e-2
         let lstm1 = try #require(assets.tensors["lstm1_kernel"])
         #expect(lstm1.shape == [476, 1600])
         #expect(lstm1.data.count == 476 * 1600)
+        // The v2 container carries a baked primed state per style:
+        // h1 c1 h2 c2 h3 c3 kappa w.
+        let primedLength = 6 * Cell.hidden + Cell.attentionMixtures + Cell.alphabetSize
+        for style in assets.styles {
+            let name = try #require(style.primed)
+            let primed = try #require(assets.tensors[name])
+            #expect(primed.data.count == primedLength)
+        }
     }
 
     @Test(arguments: ["unprimed-bias075", "primed9-bias10"])
     func matchesGoldenWithinTolerance(_ name: String) throws {
+        // The f32 fixture, not the shipped q8 asset: quantization noise is
+        // far outside the porting tolerances these goldens pin.
+        let assets = Fixtures.referenceAssets
         let golden = try loadGolden(name)
-        let model = try GravesModel(assets: Fixtures.assets)
+        let model = try GravesModel(assets: assets)
         #expect(model.encode(golden.charsText) == golden.encoded)
 
-        let cell = try Cell(assets: Fixtures.assets)
+        let cell = try Cell(assets: assets)
         let state = cell.initialState()
         let params = cell.newMdnParams()
         var chars = [Int32](repeating: 0, count: Cell.maxChars)

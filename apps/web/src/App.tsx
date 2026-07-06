@@ -188,7 +188,7 @@ export default function App() {
   const [status, setStatus] = useState<Status>("loading");
   const [note, setNote] = useState(
     BOOT_TAKE?.engine === "graves"
-      ? "loading the longhand model (15 MB, one time)…"
+      ? "loading the longhand model (3.6 MB, one time)…"
       : "loading the calligrapher model (2.6 MB, one time)…",
   );
   const [text, setText] = useState(BOOT_TAKE?.text ?? "");

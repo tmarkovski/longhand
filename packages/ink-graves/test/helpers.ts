@@ -2,11 +2,21 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { parseModelAssets, type ModelAssets } from "../src/weights.js";
 
-export function loadAssets(): ModelAssets {
-  const path = fileURLToPath(new URL("../assets/graves-v1.bin", import.meta.url));
-  const buffer = readFileSync(path);
+function loadContainer(url: URL): ModelAssets {
+  const buffer = readFileSync(fileURLToPath(url));
   const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
   return parseModelAssets(arrayBuffer);
+}
+
+/** The shipped asset: q8 weights + baked primed states. */
+export function loadAssets(): ModelAssets {
+  return loadContainer(new URL("../assets/graves-v2.bin", import.meta.url));
+}
+
+/** The float32 reference fixture (gitignored; `pnpm gen:weights` writes it).
+ * MLX golden parity only holds against unquantized weights. */
+export function loadReferenceAssets(): ModelAssets {
+  return loadContainer(new URL("./goldens/graves-f32.bin", import.meta.url));
 }
 
 export interface GoldenStep {

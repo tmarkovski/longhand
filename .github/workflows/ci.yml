@@ -28,15 +28,18 @@ jobs:
           enable-cache: true
           cache-dependency-glob: tools/uv.lock
 
-      # Model weights are committed package assets; only the golden vectors
-      # are generated here. They come fresh from the MLX reference, so the
-      # golden tests also catch any drift between the committed weights and
-      # the submodule.
-      - name: Generate golden vectors
+      # Model weights are committed package assets; generated here are the
+      # golden vectors and the gitignored f32 fixture the golden tests read
+      # (MLX parity tolerances only hold for unquantized weights). Both come
+      # fresh from the MLX reference, and the drift tests compare the
+      # committed q8 asset against the fixture, so weights that no longer
+      # match the submodule still fail the build.
+      - name: Generate golden vectors and the f32 fixture
         working-directory: tools
         run: |
           uv sync
           uv run python make_goldens.py --cpu
+          uv run python export_weights.py --fixture-only
 
       - run: pnpm install --frozen-lockfile
 

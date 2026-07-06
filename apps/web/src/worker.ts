@@ -1,9 +1,9 @@
 /**
  * Engine worker: loads handwriting engines on demand, then turns write
  * requests into streamed batches of stroke offsets. Everything heavy
- * (weight parsing, style priming, sampling) happens here so the page
- * never janks. Engines are cached after first load, so switching back
- * and forth is instant.
+ * (weight parsing, sampling) happens here so the page never janks.
+ * Engines are cached after first load, so switching back and forth is
+ * instant.
  */
 
 import type { InkEngine } from "@longhand/ink-core";
@@ -27,8 +27,6 @@ interface LoadedEngine {
   engine: InkEngine;
   descriptor: EngineDescriptor;
   stepsPerCharacter: number;
-  /** True when styled writes prime synchronously (worth a status note). */
-  warmsUp: boolean;
 }
 
 interface EngineSpec {
@@ -39,14 +37,13 @@ interface EngineSpec {
 
 const SPECS: Record<EngineId, EngineSpec> = {
   graves: {
-    url: "/model/graves-v1.bin",
-    loadingNote: "loading the longhand model (15 MB, one time)…",
+    url: "/model/graves-v2.bin",
+    loadingNote: "loading the longhand model (3.6 MB, one time)…",
     build(buffer) {
       const model = new GravesModel(parseModelAssets(buffer));
       return {
         engine: model,
         stepsPerCharacter: GRAVES_STEPS,
-        warmsUp: true,
         descriptor: {
           id: "graves",
           label: "longhand",
@@ -69,7 +66,6 @@ const SPECS: Record<EngineId, EngineSpec> = {
       return {
         engine: model,
         stepsPerCharacter: CALLIGRAPHER_STEPS,
-        warmsUp: false,
         descriptor: {
           id: "calligrapher",
           label: "calligrapher",
@@ -116,7 +112,7 @@ async function activate(id: EngineId): Promise<LoadedEngine> {
 
 // Default engine, ready as soon as the worker boots. Once it's usable, the
 // other model downloads and parses in the background so the first switch
-// is instant instead of a 15 MB wait. Quietly, and without caching a
+// is instant instead of a 3.6 MB wait. Quietly, and without caching a
 // failure: an explicit switch retries and surfaces any error itself.
 activate("calligrapher")
   .catch((error: unknown) => post({ type: "error", message: String(error) }))
@@ -143,11 +139,6 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const runtime = await load(request.engine);
     if (current !== jobId) return;
 
-    if (request.style !== null && runtime.warmsUp) {
-      post({ type: "status", message: "warming up the style…" });
-    }
-    // Style priming happens synchronously inside writer(); a few seconds
-    // for long primers, which is why it lives in this worker.
     const writer = runtime.engine.writer(request.text, {
       bias: request.bias,
       style: request.style,
