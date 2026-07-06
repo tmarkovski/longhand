@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
-import { ChevronDownIcon, CodeIcon, PauseIcon, PenLineIcon, PlayIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  CodeIcon,
+  LinkIcon,
+  PauseIcon,
+  PenLineIcon,
+  PlayIcon,
+  Share2Icon,
+  UnlinkIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -12,15 +21,17 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import CodeDialog from "./CodeDialog.js";
-import { Segmented, ThemeToggle } from "./controls.js";
+import { ChipLabel, chipClass, Segmented, ThemeToggle } from "./controls.js";
 import ExportDialog from "./ExportDialog.js";
 import type { ExportStyle } from "./export.js";
+import { buildShareUrl, parseSharedTake, type SharedTake } from "./share.js";
 import type { Platform, SnippetParams } from "./snippets.js";
 import StylePicker, { styleOptions } from "./StylePicker.js";
 import type {
   EngineDescriptor,
   EngineId,
   RendererKind,
+  SelectEngineRequest,
   WorkerEvent,
   WriteRequest,
 } from "./protocol.js";
@@ -109,6 +120,19 @@ const PAPER_COLORS: ReadonlyArray<{ name: string; value: string | null }> = [
   { name: "sky", value: "#e9f1f7" },
 ];
 
+/** A shared color that isn't in a palette belongs on the custom swatch. */
+function customSwatch(
+  value: string | null | undefined,
+  palette: ReadonlyArray<{ value: string | null }>,
+): string | null {
+  return value && !palette.some((swatch) => swatch.value === value) ? value : null;
+}
+
+// A share link (#/write?text=…&seed=…) carries a whole take. Parsed once
+// per page load, it seeds the state below and queues the auto-write that
+// fires when its engine reports ready.
+const BOOT_TAKE = parseSharedTake(window.location.hash);
+
 type Status = "loading" | "ready" | "warming" | "thinking" | "writing" | "paused" | "error";
 
 /** One animation step: a polished point with its ink width. A stroke-index
@@ -140,7 +164,7 @@ export default function App() {
   // frame (instead of measuring from a start time) lets the speed setting
   // change mid-write without the pen jumping.
   const penRef = useRef({ drawn: 0, progress: 0, lastTick: 0 });
-  const speedRef = useRef(DEFAULT_SPEED);
+  const speedRef = useRef(BOOT_TAKE?.speed ?? DEFAULT_SPEED);
   const rafRef = useRef(0);
   const alphabetRef = useRef<Set<string>>(new Set());
   const rendererRef = useRef<RendererKind>("pen");
@@ -149,32 +173,50 @@ export default function App() {
   // Paint-time copy of the ink settings, so the rAF loop sees changes
   // without re-subscribing.
   const inkRef = useRef<{ color: string | null; thickness: number }>({
-    color: RED_INK,
-    thickness: DEFAULT_THICKNESS,
+    color: BOOT_TAKE ? BOOT_TAKE.ink : RED_INK,
+    thickness: BOOT_TAKE?.thickness ?? DEFAULT_THICKNESS,
   });
   // Paint-time copy of the paper, for resolving the "no color" ink.
-  const paperRef = useRef<string | null>(null);
+  const paperRef = useRef<string | null>(BOOT_TAKE?.paper ?? null);
+  // The engine whose ready event the UI is waiting for: lets the worker
+  // handler drop announcements from a superseded activation (a quick
+  // engine flip, or the boot engine racing a share link's).
+  const engineRef = useRef<EngineId>(BOOT_TAKE?.engine ?? "calligrapher");
+  // A share link's take, pending until its engine reports ready.
+  const bootWriteRef = useRef<SharedTake | null>(BOOT_TAKE);
 
   const [status, setStatus] = useState<Status>("loading");
-  const [note, setNote] = useState("loading the calligrapher model (2.6 MB, one time)…");
-  const [text, setText] = useState("a line of ink, thinking as it goes");
-  const [legibility, setLegibility] = useState<Legibility>("normal");
+  const [note, setNote] = useState(
+    BOOT_TAKE?.engine === "graves"
+      ? "loading the longhand model (15 MB, one time)…"
+      : "loading the calligrapher model (2.6 MB, one time)…",
+  );
+  const [text, setText] = useState(BOOT_TAKE?.text ?? "");
+  const [legibility, setLegibility] = useState<Legibility>(BOOT_TAKE?.legibility ?? "normal");
   const [style, setStyle] = useState<number | null>(null);
-  const [engine, setEngine] = useState<EngineId>("calligrapher");
+  const [engine, setEngine] = useState<EngineId>(BOOT_TAKE?.engine ?? "calligrapher");
   const [descriptor, setDescriptor] = useState<EngineDescriptor | null>(null);
-  const [seed, setSeed] = useState(42);
+  const [seed, setSeed] = useState(BOOT_TAKE?.seed ?? 42);
   // "fresh" reshuffles the seed on every write (the classic new-take flow);
   // "pinned" reuses the one in the field, for dialing in a take to carry
-  // into an app via the code panel. Editing the field pins automatically.
+  // into an app via the code panel. In the UI this is a chain-link lock
+  // beside the seed field; editing the field locks it automatically.
   const [seedMode, setSeedMode] = useState<"fresh" | "pinned">("fresh");
-  const [color, setColor] = useState<string | null>(RED_INK);
-  const [customColor, setCustomColor] = useState(DEFAULT_INK);
-  const [paper, setPaper] = useState<string | null>(null);
-  const [customPaper, setCustomPaper] = useState("#f7f2e7");
-  const [thickness, setThickness] = useState(DEFAULT_THICKNESS);
-  const [speed, setSpeed] = useState(DEFAULT_SPEED);
+  const [color, setColor] = useState<string | null>(BOOT_TAKE ? BOOT_TAKE.ink : RED_INK);
+  const [customColor, setCustomColor] = useState(
+    customSwatch(BOOT_TAKE?.ink, INK_COLORS) ?? DEFAULT_INK,
+  );
+  const [paper, setPaper] = useState<string | null>(BOOT_TAKE?.paper ?? null);
+  const [customPaper, setCustomPaper] = useState(
+    customSwatch(BOOT_TAKE?.paper, PAPER_COLORS) ?? "#f7f2e7",
+  );
+  const [thickness, setThickness] = useState(BOOT_TAKE?.thickness ?? DEFAULT_THICKNESS);
+  const [speed, setSpeed] = useState(BOOT_TAKE?.speed ?? DEFAULT_SPEED);
   const [stroke, setStroke] = useState<RendererKind>("pen");
   const [optionsOpen, setOptionsOpen] = useState(false);
+  // Bumped when "write" is tapped with nothing on the line and the caret
+  // already there: keying the pen icon on it restarts the wiggle animation.
+  const [penNudge, setPenNudge] = useState(0);
   // Lives here, not in CodeDialog: the dialog unmounts during generation,
   // and the platform choice should survive a rewrite.
   const [platform, setPlatform] = useState<Platform>("web");
@@ -185,18 +227,57 @@ export default function App() {
     worker.onmessage = (event: MessageEvent<WorkerEvent>) => {
       const message = event.data;
       switch (message.type) {
-        case "ready":
+        case "ready": {
+          // A superseded activation (the self-started boot engine when a
+          // share link wants the other one, or a quick engine flip): drop
+          // it and let the wanted engine's ready win.
+          if (message.engine.id !== engineRef.current) break;
           setDescriptor(message.engine);
           alphabetRef.current = new Set(message.engine.alphabet);
           ribbonFactorRef.current = message.engine.ribbonWidthFactor;
           inkWeightRef.current = INK_WEIGHT[message.engine.id];
-          // Each engine starts in its native ink look.
-          rendererRef.current = message.engine.renderer;
-          setStroke(message.engine.renderer);
-          setStyle(message.engine.defaultStyle);
+          const boot = bootWriteRef.current;
+          if (boot) {
+            // A share link's take: its look wins over the engine defaults,
+            // and the write it promised fires now, seed and all. The hash
+            // was a launcher, not state — clean it so the address bar is
+            // plain again (and the same link can be clicked twice).
+            bootWriteRef.current = null;
+            history.replaceState(null, "", location.pathname + location.search);
+            rendererRef.current = boot.stroke ?? message.engine.renderer;
+            setStroke(rendererRef.current);
+            const nextStyle =
+              boot.style !== null && message.engine.styles.includes(boot.style)
+                ? boot.style
+                : message.engine.defaultStyle;
+            setStyle(nextStyle);
+            const cleaned = [...boot.text]
+              .filter((c) => alphabetRef.current.has(c))
+              .join("")
+              .slice(0, message.engine.maxTextLength);
+            setText(cleaned);
+            const nextSeed = boot.seed ?? Math.floor(Math.random() * 1_000_000);
+            setSeed(nextSeed);
+            if (cleaned.trim().length > 0) {
+              worker.postMessage({
+                type: "write",
+                engine: message.engine.id,
+                text: cleaned,
+                bias: LEGIBILITY[boot.legibility],
+                style: nextStyle,
+                seed: nextSeed,
+              } satisfies WriteRequest);
+            }
+          } else {
+            // Each engine starts in its native ink look.
+            rendererRef.current = message.engine.renderer;
+            setStroke(message.engine.renderer);
+            setStyle(message.engine.defaultStyle);
+          }
           setStatus("ready");
           setNote("");
           break;
+        }
         case "status":
           setStatus("warming");
           setNote(message.message);
@@ -229,6 +310,11 @@ export default function App() {
           break;
       }
     };
+    // The worker self-starts the calligrapher; a share link wanting the
+    // other engine asks for it up front (the unwanted boot engine's ready
+    // is dropped above).
+    if (BOOT_TAKE && BOOT_TAKE.engine !== "calligrapher")
+      worker.postMessage({ type: "engine", engine: BOOT_TAKE.engine } satisfies SelectEngineRequest);
     return () => {
       cancelAnimationFrame(rafRef.current);
       worker.terminate();
@@ -270,6 +356,56 @@ export default function App() {
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+
+  // The line starts empty, so put the caret on it: load, type, Enter.
+  // Only where that's the natural flow — a coarse pointer means a phone,
+  // where autofocus throws the keyboard over half the studio, and a cold
+  // load on #/build has the studio mounted but display:none (offsetParent
+  // is null there), where focus would land on an invisible field.
+  useEffect(() => {
+    const input = textInputRef.current;
+    if (input && input.offsetParent !== null && matchMedia("(pointer: fine)").matches)
+      input.focus();
+  }, []);
+
+  // Share links can also land as same-page navigations (pasted over the
+  // current URL, or clicked inside the guide): apply the take live. The
+  // engine is re-requested even when it's already active — activate()
+  // re-announces ready, and the ready handler is where a queued take
+  // fires — so both paths write through the exact same door.
+  useEffect(() => {
+    const onHashChange = () => {
+      const take = parseSharedTake(window.location.hash);
+      if (!take) return;
+      setText(take.text);
+      setLegibility(take.legibility);
+      setColor(take.ink);
+      const inkSwatch = customSwatch(take.ink, INK_COLORS);
+      if (inkSwatch) setCustomColor(inkSwatch);
+      setPaper(take.paper);
+      const paperSwatch = customSwatch(take.paper, PAPER_COLORS);
+      if (paperSwatch) setCustomPaper(paperSwatch);
+      setThickness(take.thickness);
+      setSpeed(take.speed);
+      speedRef.current = take.speed;
+      if (take.engine !== engineRef.current) {
+        // Same drill as switchEngine: the old line can't be re-laid-out
+        // by the new renderer.
+        offsetsRef.current = [];
+        setStatus("loading");
+        setNote("");
+      }
+      setEngine(take.engine);
+      engineRef.current = take.engine;
+      bootWriteRef.current = take;
+      workerRef.current?.postMessage({
+        type: "engine",
+        engine: take.engine,
+      } satisfies SelectEngineRequest);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   /** Re-lay-out the finished line for the current canvas size and settings,
    * then repaint (or, mid-animation, let the running loop repaint). */
@@ -470,6 +606,8 @@ export default function App() {
   function switchEngine(next: EngineId) {
     if (next === engine) return;
     setEngine(next);
+    engineRef.current = next;
+    bootWriteRef.current = null; // the user took over; drop a pending shared write
     setStyle(null);
     // The old line can't be re-laid-out by the new renderer, so stop the
     // settings effect from trying.
@@ -489,7 +627,15 @@ export default function App() {
       setText(cleaned);
       setNote("dropped characters this engine can't write");
     }
-    if (cleaned.trim().length === 0) return;
+    if (cleaned.trim().length === 0) {
+      // An empty write is a nudge, not an error: aim the user at the line.
+      // First tap puts the caret there; with the caret already there (the
+      // button's mousedown doesn't steal focus), wag the pen instead.
+      const input = textInputRef.current;
+      if (input && document.activeElement !== input) input.focus();
+      else setPenNudge((nudge) => nudge + 1);
+      return;
+    }
     const nextSeed = seedMode === "pinned" ? seed : Math.floor(Math.random() * 1_000_000);
     setSeed(nextSeed);
     const request: WriteRequest = {
@@ -561,6 +707,18 @@ export default function App() {
     };
   }
 
+  /** Copy a link that carries the whole take. Whoever opens it gets this
+   * exact line written for them — same settings, same seed, same strokes. */
+  async function share() {
+    const url = buildShareUrl(snippetParams());
+    try {
+      await navigator.clipboard.writeText(url);
+      setNote("link copied · opening it writes this exact take");
+    } catch {
+      setNote(url); // no clipboard access: surface the link itself
+    }
+  }
+
   const busy = status === "loading" || status === "warming";
   const options = styleOptions(descriptor);
   const styleLabel = options.find((option) => option.id === style)?.label ?? "style";
@@ -572,28 +730,33 @@ export default function App() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-7 sm:px-6 sm:py-10">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Longhand</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            AI handwriting synthesis in your browser. yours to export in any format, free
-          </p>
+      <header>
+        <div className="flex items-center justify-between gap-4">
+          {/* Lowercase as a wordmark, like the rest of the studio's voice;
+              in prose (the guide, this subtitle) the name stays a normal
+              capitalized noun. */}
+          <h1 className="text-2xl font-semibold tracking-tight">longhand</h1>
+          <a
+            href="#/build"
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40"
+          >
+            <CodeIcon className="size-3.5" aria-hidden />
+            build with it
+          </a>
         </div>
-        <a
-          href="#/build"
-          className="mt-1 flex shrink-0 items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40"
-        >
-          <CodeIcon className="size-3.5" aria-hidden />
-          build with it
-        </a>
+        {/* Below the wordmark row, so it can run the full width. */}
+        <p className="mt-1 text-sm text-muted-foreground">
+          AI handwriting synthesis in your browser. export in any format or build with the
+          SDK, all free
+        </p>
       </header>
 
       {/* The paper: you type on its first line and the handwriting appears
           beneath your words. Below the ink — in real layout, so ink can
           never run into it — a strip with the status line, the playback
-          control, and the take's two exits (code and export). The strip's
-          height is fixed so the canvas doesn't shift when buttons come
-          and go. */}
+          control, and the take's three exits (share, code, export). The
+          strip's height is fixed so the canvas doesn't shift when buttons
+          come and go. */}
       <div
         className="overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-card"
         style={paper ? { background: paper } : undefined}
@@ -605,7 +768,8 @@ export default function App() {
               on a chosen paper, resolve against the paper like the painters
               do; on the default card, inherit so the theme keeps working. */}
           <PenLineIcon
-            className="size-4 shrink-0 text-muted-foreground"
+            key={penNudge}
+            className={cn("size-4 shrink-0 text-muted-foreground", penNudge > 0 && "pen-wiggle")}
             style={{ color: color ?? (paper ? defaultInk(paper) : undefined) }}
             aria-hidden
           />
@@ -627,10 +791,14 @@ export default function App() {
             spellCheck={false}
           />
           {/* Same chip treatment as the action buttons on the bottom edge:
-              the bg-card surface keeps it legible on any paper color. */}
+              the bg-card surface keeps it legible on any paper color. The
+              mousedown preventDefault keeps the click from stealing focus,
+              so the caret stays on the line for the next edit — and an
+              empty tap can tell "focus the line" from "wag the pen". */}
           <Button
             variant="outline"
             className="rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
+            onMouseDown={(event) => event.preventDefault()}
             onClick={write}
             disabled={busy}
             title="every write is a new take"
@@ -647,13 +815,13 @@ export default function App() {
             offsetsRef.current.length > 0 && (
               <Button
                 variant="outline"
-                size="icon"
-                className="rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
+                className={chipClass}
                 title={status === "writing" ? "pause" : "play"}
                 aria-label={status === "writing" ? "pause" : "play"}
                 onClick={togglePlayback}
               >
                 {status === "writing" ? <PauseIcon /> : <PlayIcon />}
+                <ChipLabel>{status === "writing" ? "pause" : "play"}</ChipLabel>
               </Button>
             )}
           <p
@@ -675,6 +843,16 @@ export default function App() {
           {(status === "ready" || status === "writing" || status === "paused") &&
             offsetsRef.current.length > 0 && (
               <>
+                <Button
+                  variant="outline"
+                  className={chipClass}
+                  title="copy a link that writes this take"
+                  aria-label="share this take"
+                  onClick={share}
+                >
+                  <Share2Icon />
+                  <ChipLabel>share</ChipLabel>
+                </Button>
                 <CodeDialog
                   params={snippetParams()}
                   platform={platform}
@@ -697,7 +875,10 @@ export default function App() {
       >
         <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm">
           <span className="font-medium">options</span>
-          <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
+          {/* The collapsed state's whole job: a one-line readout of the
+              settings. Open, the full controls say the same thing, so the
+              readout fades away on the panel's own 200ms clock. */}
+          <span className="min-w-0 flex-1 truncate text-left text-muted-foreground transition-opacity duration-200 group-data-panel-open:opacity-0">
             {descriptor?.label ?? "loading…"} · {styleLabel} · {stroke} ·{" "}
             <span
               className="inline-block size-[11px] rounded-full border border-foreground/20 bg-foreground align-[-1.5px]"
@@ -782,35 +963,6 @@ export default function App() {
                   onChange={setStroke}
                 />
               </div>
-              {/* The take's identity: pinned, the same seed rewrites the same
-                  strokes (here and in the SDKs); fresh, every write rolls a
-                  new one. Typing a seed pins it. */}
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="w-16 shrink-0">seed</span>
-                <Input
-                  className="h-7 w-24 rounded-full bg-white/80 px-3 text-xs shadow-xs md:text-xs dark:bg-background/40"
-                  aria-label="seed"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  value={String(seed)}
-                  onChange={(event) => {
-                    // Full UInt32 range: a seed minted by the Swift SDK
-                    // must round-trip into the studio unchanged.
-                    const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
-                    setSeed(Math.min(digits === "" ? 0 : Number(digits), 4294967295));
-                    setSeedMode("pinned");
-                  }}
-                />
-                <Segmented
-                  aria-label="seed mode"
-                  options={[
-                    { value: "fresh", label: "fresh" },
-                    { value: "pinned", label: "pinned" },
-                  ]}
-                  value={seedMode}
-                  onChange={setSeedMode}
-                />
-              </div>
               {/* Eight fixed-size swatches only fit beside their label in a
                   full-width (md) grid column; below that each palette takes
                   a whole row, and on phones the swatches shrink a step so
@@ -890,6 +1042,50 @@ export default function App() {
                     }}
                   />
                 </div>
+              </div>
+              {/* The take's identity, last: it's the most technical dial.
+                  Chain closed, the same seed rewrites the same strokes (here
+                  and in the SDKs); chain broken, every write rolls a new
+                  one. Typing a seed closes the chain. */}
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="w-16 shrink-0">seed</span>
+                <Input
+                  className="h-7 w-24 rounded-full bg-white/80 px-3 text-xs shadow-xs md:text-xs dark:bg-background/40"
+                  aria-label="seed"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={String(seed)}
+                  onChange={(event) => {
+                    // Full UInt32 range: a seed minted by the Swift SDK
+                    // must round-trip into the studio unchanged.
+                    const digits = event.target.value.replace(/\D/g, "").slice(0, 10);
+                    setSeed(Math.min(digits === "" ? 0 : Number(digits), 4294967295));
+                    setSeedMode("pinned");
+                  }}
+                />
+                <button
+                  type="button"
+                  aria-pressed={seedMode === "pinned"}
+                  aria-label="lock seed"
+                  title={
+                    seedMode === "pinned"
+                      ? "locked: every write reuses this seed"
+                      : "unlocked: every write rolls a new seed"
+                  }
+                  className={cn(
+                    "cursor-pointer rounded-full p-1.5 transition-colors",
+                    seedMode === "pinned"
+                      ? "bg-white/80 text-foreground shadow-xs dark:bg-background/40"
+                      : "hover:text-foreground",
+                  )}
+                  onClick={() => setSeedMode(seedMode === "pinned" ? "fresh" : "pinned")}
+                >
+                  {seedMode === "pinned" ? (
+                    <LinkIcon className="size-3.5" aria-hidden />
+                  ) : (
+                    <UnlinkIcon className="size-3.5" aria-hidden />
+                  )}
+                </button>
               </div>
             </div>
           </div>

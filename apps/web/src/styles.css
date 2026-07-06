@@ -168,3 +168,74 @@
     )
     var(--muted);
 }
+
+/* "Write" with nothing on the line: the pen at the margin waggles, a nudge
+ * toward the caret rather than an error. Pivots near the nib so it reads
+ * as a pen wag, not a spin. */
+@keyframes pen-wiggle {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  25% {
+    transform: rotate(-14deg);
+  }
+  55% {
+    transform: rotate(10deg);
+  }
+  80% {
+    transform: rotate(-5deg);
+  }
+}
+
+.pen-wiggle {
+  animation: pen-wiggle 0.5s ease-in-out;
+  transform-origin: 30% 80%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pen-wiggle {
+    animation: none;
+  }
+}
+
+/* The paper's action chips: icon circles that unroll into a labeled pill
+ * under the pointer (or keyboard focus) and roll back up after. The label
+ * sits in a grid column animating 0fr → 1fr, so the unroll stops exactly
+ * at the label's own width — no per-label max-width guesses. */
+.chip-label {
+  display: grid;
+  grid-template-columns: 0fr;
+  margin-left: 0;
+  opacity: 0;
+  transition:
+    grid-template-columns 200ms ease,
+    margin-left 200ms ease,
+    opacity 150ms ease;
+}
+
+.chip-label > span {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Hover-gated so a tap on touch screens doesn't leave a chip stuck open. */
+@media (hover: hover) {
+  .chip:hover .chip-label {
+    grid-template-columns: 1fr;
+    margin-left: 6px;
+    opacity: 1;
+  }
+}
+
+.chip:focus-visible .chip-label {
+  grid-template-columns: 1fr;
+  margin-left: 6px;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip-label {
+    transition: none;
+  }
+}

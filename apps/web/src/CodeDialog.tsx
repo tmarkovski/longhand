@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import CodeBlock from "./CodeBlock.js";
-import { Segmented, useCloseOnHashNavigate } from "./controls.js";
+import { ChipLabel, chipClass, Segmented, useCloseOnHashNavigate } from "./controls.js";
 import { PLATFORMS, snippetFor, type Platform, type SnippetParams } from "./snippets.js";
 
 /**
@@ -41,14 +41,14 @@ export default function CodeDialog({
         render={
           <Button
             variant="outline"
-            size="icon"
-            className="rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
+            className={chipClass}
             title="use in your app"
             aria-label="use in your app"
           />
         }
       >
         <CodeIcon />
+        <ChipLabel>use in your app</ChipLabel>
       </DialogTrigger>
       {/* The snippet is the tallest and widest thing the dialog system holds:
           cap the height on short viewports, and let the code block shrink
@@ -74,7 +74,7 @@ export default function CodeDialog({
         </div>
         <CodeBlock className="min-w-0" code={snippetFor(platform, params)} />
         <p className="text-xs text-muted-foreground">
-          write with a <span className="font-medium">pinned</span> seed to keep this take ·{" "}
+          write with a <span className="font-medium">locked</span> seed to keep this take ·{" "}
           <a className="underline underline-offset-2 hover:text-foreground" href="#/build">
             full setup guide
           </a>

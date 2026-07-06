@@ -1,6 +1,24 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** The paper's action chips (play, share, code, export): icon circles that
+ * unroll into a labeled pill under the pointer or keyboard focus — the
+ * animation lives in styles.css (.chip / .chip-label). The bg-card surface
+ * keeps them legible on any paper color. */
+export const chipClass =
+  "chip h-8 gap-0 rounded-full bg-card/90 px-[7px] dark:bg-card/90 dark:hover:bg-accent";
+
+/** A chip's unrolling label. Hidden from the accessibility tree: the chips
+ * carry a stable aria-label, and this text comes and goes with hover. */
+export function ChipLabel({ children }: { children: ReactNode }) {
+  return (
+    <span className="chip-label" aria-hidden>
+      {/* Inner span so the grid column can clip it while it unrolls. */}
+      <span>{children}</span>
+    </span>
+  );
+}
 
 /** Close a portaled dialog on any hash navigation. The dialogs render
  * above the hash router (portaled to body), and the studio stays mounted

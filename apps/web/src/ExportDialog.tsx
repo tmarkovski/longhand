@@ -17,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { useCloseOnHashNavigate } from "./controls.js";
+import { ChipLabel, chipClass, useCloseOnHashNavigate } from "./controls.js";
 import {
   downloadBlob,
   exportFileName,
@@ -208,14 +208,14 @@ export default function ExportDialog({ text, getOffsets, getStyle }: ExportDialo
         render={
           <Button
             variant="outline"
-            size="icon"
-            className="rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
+            className={chipClass}
             title="export"
             aria-label="export"
           />
         }
       >
         <DownloadIcon />
+        <ChipLabel>export</ChipLabel>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>

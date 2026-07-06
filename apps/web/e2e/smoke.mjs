@@ -1,8 +1,10 @@
 /**
  * Headless smoke test: verifies the boot defaults (calligrapher engine,
- * style 2, pen stroke), writes with both engines and stroke types, replays,
- * restyles, pins a seed, reads the code dialog's snippets, opens the build
- * page, and checks ink actually lands on the canvas with no console errors.
+ * style 2, pen stroke, empty focused text line), types and writes with both
+ * engines and stroke types, replays, restyles, locks a seed, reads the code
+ * dialog's snippets, opens the build page, replays a share link both live
+ * and from a cold load, and checks ink actually lands on the canvas with
+ * no console errors.
  *
  *   node e2e/smoke.mjs [baseUrl] [screenshotPath]
  */
@@ -12,7 +14,12 @@ const baseUrl = process.argv[2] ?? "http://localhost:5199";
 const screenshotPath = process.argv[3] ?? "smoke.png";
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1080, height: 720 } });
+// The share button round-trips through the real clipboard.
+const context = await browser.newContext({
+  viewport: { width: 1080, height: 720 },
+  permissions: ["clipboard-read", "clipboard-write"],
+});
+const page = await context.newPage();
 const errors = [];
 page.on("console", (message) => {
   if (message.type() === "error") errors.push(message.text());
@@ -57,6 +64,27 @@ const writeButton = page.getByRole("button", { name: "write" });
 await writeButton.waitFor({ state: "visible" });
 await waitForIdle();
 
+// The line starts empty with the caret already on it (fine-pointer devices
+// get autofocus), so the whole desktop flow is: load, type, Enter. Typing
+// through the keyboard proves the focus, not just the field.
+const textBox = page.getByPlaceholder("type something to write…");
+if ((await textBox.inputValue()) !== "") fail("text box should start empty");
+if (!(await textBox.evaluate((el) => el === document.activeElement)))
+  fail("text box should be focused on load");
+
+// An empty write is a nudge, not an error: unfocused, it aims the caret at
+// the line; with the caret already there (the button never steals focus),
+// it wags the pen at the margin.
+await textBox.evaluate((el) => el.blur());
+await writeButton.click();
+if (!(await textBox.evaluate((el) => el === document.activeElement)))
+  fail("empty write should focus the text line");
+await writeButton.click();
+if ((await page.locator(".pen-wiggle").count()) !== 1)
+  fail("empty write with the caret on the line should wag the pen");
+
+await page.keyboard.type("a line of ink, thinking as it goes");
+
 // Every control besides the text row lives in a collapsed options panel;
 // open it once and leave it open for the whole run.
 await page.getByRole("button", { name: /^options/ }).click();
@@ -79,9 +107,10 @@ const penChecked = await page
   .getAttribute("aria-checked");
 if (penChecked !== "true") fail("default stroke is not pen");
 
-// Write with the boot defaults. Generation completes before the pen
-// animates, so the wait covers a full generate + partial replay.
-await writeButton.click();
+// Write with the boot defaults — Enter in the text line presses write.
+// Generation completes before the pen animates, so the wait covers a full
+// generate + partial replay.
+await textBox.press("Enter");
 await page.waitForTimeout(10_000);
 const calligrapherPenInk = await inkPixels();
 
@@ -138,17 +167,23 @@ const restyledInk = await inkPixels();
 await selectEngine("calligrapher");
 await waitForIdle();
 
-// Seed pinning: typing a seed pins it, and a write keeps it (the footer
-// carries the take's seed).
+// Seed locking: typing a seed closes the chain-link lock, and a write
+// keeps the seed (the footer carries the take's seed).
 await page.getByLabel("seed", { exact: true }).fill("12345");
-const pinnedChecked = await page
-  .getByRole("radio", { name: "pinned" })
-  .getAttribute("aria-checked");
-if (pinnedChecked !== "true") fail("typing a seed did not pin it");
+const lockPressed = await page
+  .getByRole("button", { name: "lock seed" })
+  .getAttribute("aria-pressed");
+if (lockPressed !== "true") fail("typing a seed did not lock it");
 await writeButton.click();
 await page.waitForTimeout(2_500);
 if (!(await page.locator("footer").textContent()).includes("seed 12345"))
   fail("pinned write did not keep the seed");
+
+// Share copies a #/write link carrying the whole take, seed included.
+await page.getByRole("button", { name: "share this take" }).click();
+const sharedUrl = await page.evaluate(() => navigator.clipboard.readText());
+if (!sharedUrl.includes("#/write?") || !sharedUrl.includes("seed=12345"))
+  fail(`share link looks wrong: ${sharedUrl}`);
 
 // The code dialog (the </> button on the paper, next to export) emits the
 // current take for both SDKs, seed included.
@@ -197,6 +232,31 @@ if ((await inkPixels()) < inkBeforeGuide * 0.9)
 // The build page also deep-links (hash route on a cold load).
 await page.goto(`${baseUrl}/#/build`);
 await page.getByRole("heading", { name: "Build with Longhand" }).waitFor({ timeout: 10_000 });
+
+// Opening the share link writes the take hands-off: settings restored, the
+// promised write fired with the pinned seed, and the launcher hash cleaned
+// off the address bar afterwards.
+const expectSharedTake = async (label) => {
+  await waitForIdle();
+  await page.waitForTimeout(10_000);
+  if ((await textBox.inputValue()) !== "a line of ink, thinking as it goes")
+    fail(`${label}: share link did not restore the text`);
+  if (!(await page.locator("footer").textContent()).includes("seed 12345"))
+    fail(`${label}: share link did not replay the pinned seed`);
+  if ((await inkPixels()) < 1000) fail(`${label}: share link did not write the line`);
+  if (page.url().includes("#/write")) fail(`${label}: share link should clean its hash`);
+};
+
+// Live: from the build page this is a same-document hash navigation, the
+// path a link clicked (or pasted) inside the running app takes.
+await page.goto(sharedUrl);
+await expectSharedTake("live");
+
+// Cold: a full page load with the #/write hash, the path a link opened in
+// a fresh tab takes.
+await page.goto("about:blank");
+await page.goto(sharedUrl);
+await expectSharedTake("cold load");
 
 await browser.close();
 
