@@ -4,10 +4,26 @@ import { cn } from "@/lib/utils";
 
 /** The paper's action chips (play, share, code, export): icon circles that
  * unroll into a labeled pill under the pointer or keyboard focus — the
- * animation lives in styles.css (.chip / .chip-label). The bg-card surface
- * keeps them legible on any paper color. */
-export const chipClass =
-  "chip h-8 gap-0 rounded-full bg-card/90 px-[7px] dark:bg-card/90 dark:hover:bg-accent";
+ * animation lives in styles.css (.chip / .chip-label). Raised off the paper
+ * by shadow rather than drawn with a border, the same language as the paper
+ * card itself; in dark themes shadows can't lift, so the surface goes one
+ * step lighter than the card instead. Borderless, the 32px circle is icon
+ * (16) + padding (16).
+ *
+ * Each chip is absolutely anchored inside a fixed 32px slot (chipSlotClass
+ * on the wrapper), so the unrolling pill expands OVER the strip instead of
+ * pushing its neighbors — a pointer traveling the row never has its target
+ * move away from it. Left-anchored chips unroll rightward; right-anchored
+ * ones pin the icon at the right edge and roll the label out to its left
+ * (.chip-reverse flips the flex order and the label's gap side). */
+const chipClass =
+  "chip h-8 gap-0 rounded-full border-0 bg-white/90 px-2 shadow-sm dark:bg-muted/90 dark:hover:bg-[oklch(0.32_0_0)]";
+export const chipSlotClass = "relative size-8 shrink-0";
+// w-max: an absolute element shrink-wraps against its containing block (the
+// 32px slot), which would clamp the unroll; max-content sizes it to its own
+// icon + label instead.
+export const chipLeftClass = cn(chipClass, "absolute top-0 left-0 w-max");
+export const chipRightClass = cn(chipClass, "chip-reverse absolute top-0 right-0 w-max");
 
 /** A chip's unrolling label. Hidden from the accessibility tree: the chips
  * carry a stable aria-label, and this text comes and goes with hover. */

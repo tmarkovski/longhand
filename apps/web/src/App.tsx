@@ -10,6 +10,7 @@ import {
   PlayIcon,
   Share2Icon,
   UnlinkIcon,
+  XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +22,14 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import CodeDialog from "./CodeDialog.js";
-import { ChipLabel, chipClass, Segmented, ThemeToggle } from "./controls.js";
+import {
+  ChipLabel,
+  chipLeftClass,
+  chipRightClass,
+  chipSlotClass,
+  Segmented,
+  ThemeToggle,
+} from "./controls.js";
 import ExportDialog from "./ExportDialog.js";
 import type { ExportStyle } from "./export.js";
 import { buildShareUrl, parseSharedTake, type SharedTake } from "./share.js";
@@ -669,6 +677,23 @@ export default function App() {
     setTake({ engine, text: cleaned, legibility, style, seed: nextSeed });
   }
 
+  /** The X beside write: back to a blank line and blank paper. Only the
+   * take goes — settings, seed, and engine stay dialed in — and the caret
+   * lands on the line, ready for the next one. */
+  function clearAll() {
+    cancelAnimationFrame(rafRef.current);
+    offsetsRef.current = [];
+    stepsRef.current = [];
+    ribbonRef.current = null;
+    ribbonPathsRef.current = [];
+    clearCanvas();
+    setText("");
+    setTake(null);
+    setNote("");
+    if (status === "writing" || status === "paused") setStatus("ready");
+    textInputRef.current?.focus();
+  }
+
   /** Play/pause: freeze the pen mid-line, pick up where it stopped, or —
    * once the line is finished — write it again from the start. */
   function togglePlayback() {
@@ -750,6 +775,10 @@ export default function App() {
       take.legibility !== legibility ||
       take.style !== style ||
       (seedMode === "pinned" && take.seed !== seed));
+  // Something to clear, and no generation in flight (a mid-think clear
+  // would race the offsets still streaming out of the worker).
+  const clearable =
+    (text !== "" || offsetsRef.current.length > 0) && !busy && status !== "thinking";
   const options = styleOptions(descriptor);
   const styleLabel = options.find((option) => option.id === style)?.label ?? "style";
   const fmt = (value: number) => String(Number(value.toFixed(2)));
@@ -776,8 +805,21 @@ export default function App() {
         </div>
         {/* Below the wordmark row, so it can run the full width. */}
         <p className="mt-1 text-sm text-muted-foreground">
-          AI handwriting synthesis in your browser. export in any format or build with the
-          SDK, all free
+          AI handwriting synthesis in your browser or native on your devices. export in
+          any still or animated format, or use the SDK to build it directly into your
+          app, all free
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground/70">
+          based on{" "}
+          <a
+            className="underline underline-offset-2 hover:text-foreground"
+            href="https://arxiv.org/abs/1308.0850"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Generating Sequences with Recurrent Neural Networks
+          </a>{" "}
+          (Graves, 2013)
         </p>
       </header>
 
@@ -820,14 +862,36 @@ export default function App() {
             autoCapitalize="off"
             spellCheck={false}
           />
-          {/* Same chip treatment as the action buttons on the bottom edge:
-              the bg-card surface keeps it legible on any paper color. The
+          {/* The X: back to a blank line and blank paper. Always mounted so
+              the row never reflows — it just fades out (and disables) when
+              there's nothing to clear. A chip like the strip's: pinned in
+              its slot, unrolling "clear" leftward over the line's empty
+              tail (never toward the write button). */}
+          <div className={chipSlotClass}>
+            <Button
+              variant="outline"
+              className={cn(
+                chipRightClass,
+                !clearable && "pointer-events-none opacity-0 disabled:opacity-0",
+              )}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={clearAll}
+              disabled={!clearable}
+              title="clear the line and the paper"
+              aria-label="clear"
+            >
+              <XIcon />
+              <ChipLabel>clear</ChipLabel>
+            </Button>
+          </div>
+          {/* Same raised treatment as the action chips on the bottom edge:
+              lifted off the paper by shadow, legible on any paper color. The
               mousedown preventDefault keeps the click from stealing focus,
               so the caret stays on the line for the next edit — and an
               empty tap can tell "focus the line" from "wag the pen". */}
           <Button
             variant="outline"
-            className="relative rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
+            className="relative rounded-full border-0 bg-white/90 shadow-sm dark:bg-muted/90 dark:hover:bg-[oklch(0.32_0_0)]"
             onMouseDown={(event) => event.preventDefault()}
             onClick={write}
             disabled={busy}
@@ -855,16 +919,18 @@ export default function App() {
         <div className="flex h-12 items-center gap-3 px-3 pb-1">
           {(status === "ready" || status === "writing" || status === "paused") &&
             offsetsRef.current.length > 0 && (
-              <Button
-                variant="outline"
-                className={chipClass}
-                title={status === "writing" ? "pause" : "play"}
-                aria-label={status === "writing" ? "pause" : "play"}
-                onClick={togglePlayback}
-              >
-                {status === "writing" ? <PauseIcon /> : <PlayIcon />}
-                <ChipLabel>{status === "writing" ? "pause" : "play"}</ChipLabel>
-              </Button>
+              <div className={chipSlotClass}>
+                <Button
+                  variant="outline"
+                  className={chipLeftClass}
+                  title={status === "writing" ? "pause" : "play"}
+                  aria-label={status === "writing" ? "pause" : "play"}
+                  onClick={togglePlayback}
+                >
+                  {status === "writing" ? <PauseIcon /> : <PlayIcon />}
+                  <ChipLabel>{status === "writing" ? "pause" : "play"}</ChipLabel>
+                </Button>
+              </div>
             )}
           <p
             role="status"
@@ -885,16 +951,18 @@ export default function App() {
           {(status === "ready" || status === "writing" || status === "paused") &&
             offsetsRef.current.length > 0 && (
               <>
-                <Button
-                  variant="outline"
-                  className={chipClass}
-                  title="copy a link that writes this take"
-                  aria-label="share this take"
-                  onClick={share}
-                >
-                  <Share2Icon />
-                  <ChipLabel>share</ChipLabel>
-                </Button>
+                <div className={chipSlotClass}>
+                  <Button
+                    variant="outline"
+                    className={chipRightClass}
+                    title="copy a link that writes this take"
+                    aria-label="share this take"
+                    onClick={share}
+                  >
+                    <Share2Icon />
+                    <ChipLabel>share</ChipLabel>
+                  </Button>
+                </div>
                 <CodeDialog
                   params={snippetParams()}
                   platform={platform}
@@ -923,14 +991,15 @@ export default function App() {
           {/* The collapsed state's whole job: a one-line readout of the
               settings. Open, the full controls say the same thing, so the
               readout fades away on the panel's own 200ms clock. */}
-          <span className="min-w-0 flex-1 truncate text-left text-muted-foreground transition-opacity duration-200 group-data-panel-open:opacity-0">
+          <span className="min-w-0 flex-1 truncate text-left text-xs text-muted-foreground transition-opacity duration-200 group-data-panel-open:opacity-0">
             {descriptor?.label ?? "loading…"} · {styleLabel} · {stroke} ·{" "}
             <span
               className="inline-block size-[11px] rounded-full border border-foreground/20 bg-foreground align-[-1.5px]"
               style={color ? { background: color } : undefined}
               aria-hidden
             />{" "}
-            · legibility {legibility} · thickness {fmt(thickness)}× · speed {fmt(speed)}×
+            · legibility {legibility} · thickness {fmt(thickness)}× · speed {fmt(speed)}× ·
+            seed {seed}
           </span>
           <ChevronDownIcon
             className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-180"

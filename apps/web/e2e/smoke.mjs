@@ -87,6 +87,16 @@ await writeButton.click();
 if ((await page.locator(".pen-wiggle").count()) !== 1)
   fail("empty write with the caret on the line should wag the pen");
 
+// The clear X is invisible (faded out and disabled) on a blank studio,
+// wakes with typed text, blanks the line with one tap — keeping the caret
+// on it — then hides again.
+const clearButton = page.getByRole("button", { name: "clear", exact: true });
+if (!(await clearButton.isDisabled())) fail("clear X should be hidden on a blank studio");
+await page.keyboard.type("a line of ink, thinking as it goes");
+if (!(await clearButton.isEnabled())) fail("typing should wake the clear X");
+await clearButton.click();
+if ((await textBox.inputValue()) !== "") fail("clear X did not empty the line");
+if (!(await clearButton.isDisabled())) fail("clear X should hide once the line is blank");
 await page.keyboard.type("a line of ink, thinking as it goes");
 
 // The stale-take dot compares against the rendered line; with no take yet
@@ -288,6 +298,13 @@ await expectSharedTake("live");
 await page.goto("about:blank");
 await page.goto(sharedUrl);
 await expectSharedTake("cold load");
+
+// The clear X also wipes a rendered take: blank line, blank paper, gone.
+await page.getByRole("button", { name: "clear", exact: true }).click();
+if ((await textBox.inputValue()) !== "") fail("clear X did not empty the replayed text");
+if ((await inkPixels()) !== 0) fail("clear X did not blank the paper");
+if (!(await page.getByRole("button", { name: "clear", exact: true }).isDisabled()))
+  fail("clear X should hide after wiping the take");
 
 await browser.close();
 

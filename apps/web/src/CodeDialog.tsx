@@ -10,7 +10,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import CodeBlock from "./CodeBlock.js";
-import { ChipLabel, chipClass, Segmented, useCloseOnHashNavigate } from "./controls.js";
+import {
+  ChipLabel,
+  chipRightClass,
+  chipSlotClass,
+  Segmented,
+  useCloseOnHashNavigate,
+} from "./controls.js";
 import { PLATFORMS, snippetFor, type Platform, type SnippetParams } from "./snippets.js";
 
 /**
@@ -37,19 +43,21 @@ export default function CodeDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
-          <Button
-            variant="outline"
-            className={chipClass}
-            title="use in your app"
-            aria-label="use in your app"
-          />
-        }
-      >
-        <CodeIcon />
-        <ChipLabel>use in your app</ChipLabel>
-      </DialogTrigger>
+      <div className={chipSlotClass}>
+        <DialogTrigger
+          render={
+            <Button
+              variant="outline"
+              className={chipRightClass}
+              title="use in your app"
+              aria-label="use in your app"
+            />
+          }
+        >
+          <CodeIcon />
+          <ChipLabel>use in your app</ChipLabel>
+        </DialogTrigger>
+      </div>
       {/* The snippet is the tallest and widest thing the dialog system holds:
           cap the height on short viewports, and let the code block shrink
           below its content width (grid children won't, by default) so the
