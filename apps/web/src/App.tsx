@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
-import { ChevronDownIcon, CodeIcon, PauseIcon, PenLineIcon, PlayIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, CodeIcon, PauseIcon, PenLineIcon, PlayIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Collapsible,
@@ -11,11 +11,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
-import CodeBlock from "./CodeBlock.js";
+import CodeDialog from "./CodeDialog.js";
 import { Segmented, ThemeToggle } from "./controls.js";
 import ExportDialog from "./ExportDialog.js";
 import type { ExportStyle } from "./export.js";
-import { PLATFORMS, snippetFor, type Platform, type SnippetParams } from "./snippets.js";
+import type { Platform, SnippetParams } from "./snippets.js";
 import StylePicker, { styleOptions } from "./StylePicker.js";
 import type {
   EngineDescriptor,
@@ -44,9 +44,25 @@ const PEN_WIDTH_PER_SCALE = 2.2 / 1.6;
 const DEFAULT_INK = "#1c1c28";
 const DEFAULT_INK_DARK = "#ececf1";
 
-/** "No color" means the page's ink, which flips with the theme. Read at
- * paint time; the theme toggle triggers a repaint when the class changes. */
-function defaultInk(): string {
+/** Cheap sRGB luminance for a #rgb/#rrggbb color, 0..1. */
+function luminance(hex: string): number {
+  let digits = hex.replace("#", "");
+  if (digits.length === 3) digits = [...digits].map((c) => c + c).join("");
+  const packed = parseInt(digits, 16);
+  if (digits.length !== 6 || Number.isNaN(packed)) return 1; // unparseable: treat as light
+  const r = (packed >> 16) & 255;
+  const g = (packed >> 8) & 255;
+  const b = packed & 255;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+}
+
+/** "No color" means an ink that reads on what it sits on. On the default
+ * card that's the page's ink, which flips with the theme (read at paint
+ * time; the theme toggle triggers a repaint when the class changes). On a
+ * chosen paper the theme is irrelevant — a light paper needs dark ink even
+ * in dark mode — so the paper's own luminance decides. */
+function defaultInk(paper: string | null): string {
+  if (paper) return luminance(paper) > 0.5 ? DEFAULT_INK : DEFAULT_INK_DARK;
   return document.documentElement.classList.contains("dark") ? DEFAULT_INK_DARK : DEFAULT_INK;
 }
 
@@ -115,11 +131,6 @@ interface RibbonLayout {
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textInputRef = useRef<HTMLInputElement>(null);
-  // Mirror span for the clear button: it renders the typed text invisibly in
-  // the input's font, so the X can sit just past the last glyph instead of
-  // being pinned to the far edge of the row.
-  const textMirrorRef = useRef<HTMLSpanElement>(null);
-  const [clearLeft, setClearLeft] = useState<number | null>(null);
   const workerRef = useRef<Worker | null>(null);
   const offsetsRef = useRef<Array<[number, number, number]>>([]);
   const stepsRef = useRef<PenStep[]>([]);
@@ -141,26 +152,12 @@ export default function App() {
     color: RED_INK,
     thickness: DEFAULT_THICKNESS,
   });
+  // Paint-time copy of the paper, for resolving the "no color" ink.
+  const paperRef = useRef<string | null>(null);
 
   const [status, setStatus] = useState<Status>("loading");
   const [note, setNote] = useState("loading the calligrapher model (2.6 MB, one time)…");
   const [text, setText] = useState("a line of ink, thinking as it goes");
-
-  // Keep the clear button trailing the text: 8px past the last glyph, but
-  // never past the row's edge (long lines scroll inside the input, so the
-  // X parks at the far right exactly where the visible text ends).
-  useLayoutEffect(() => {
-    const mirror = textMirrorRef.current;
-    const container = mirror?.parentElement;
-    if (!mirror || !container) return;
-    const update = () => {
-      setClearLeft(Math.min(mirror.offsetWidth + 6, container.clientWidth - 26));
-    };
-    update();
-    const observer = new ResizeObserver(update);
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [text]);
   const [legibility, setLegibility] = useState<Legibility>("normal");
   const [style, setStyle] = useState<number | null>(null);
   const [engine, setEngine] = useState<EngineId>("calligrapher");
@@ -178,7 +175,8 @@ export default function App() {
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
   const [stroke, setStroke] = useState<RendererKind>("pen");
   const [optionsOpen, setOptionsOpen] = useState(false);
-  const [codeOpen, setCodeOpen] = useState(false);
+  // Lives here, not in CodeDialog: the dialog unmounts during generation,
+  // and the platform choice should survive a rewrite.
   const [platform, setPlatform] = useState<Platform>("web");
 
   useEffect(() => {
@@ -241,13 +239,15 @@ export default function App() {
   // Ink settings restyle the finished line in place: re-lay it out with the
   // new width and repaint immediately (or, mid-animation, let the running
   // loop repaint from scratch at its current pace). Stroke type re-layouts
-  // the same offsets through the other renderer's pipeline.
+  // the same offsets through the other renderer's pipeline. Paper is here
+  // because the "no color" ink resolves against it.
   useEffect(() => {
     rendererRef.current = stroke;
     inkRef.current = { color, thickness };
+    paperRef.current = paper;
     refit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [color, thickness, stroke]);
+  }, [color, thickness, stroke, paper]);
 
   // The canvas is sized by CSS, so rotation, a window resize, or coming
   // back from the build page (the router hides the studio, which zeroes
@@ -373,7 +373,7 @@ export default function App() {
   function paintPen(context: CanvasRenderingContext2D, limit: number) {
     const steps = stepsRef.current;
     const pen = penRef.current;
-    const ink = inkRef.current.color ?? defaultInk();
+    const ink = inkRef.current.color ?? defaultInk(paperRef.current);
     context.strokeStyle = ink;
     context.fillStyle = ink;
     const mid = (a: PenStep, b: PenStep): [number, number] => [(a.x + b.x) / 2, (a.y + b.y) / 2];
@@ -418,7 +418,7 @@ export default function App() {
     const line = ribbonRef.current;
     if (!line) return;
     context.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
-    context.fillStyle = inkRef.current.color ?? defaultInk();
+    context.fillStyle = inkRef.current.color ?? defaultInk(paperRef.current);
     let remaining = limit;
     for (let index = 0; index < line.strokes.length && remaining > 0; index++) {
       const points = line.strokes[index]!;
@@ -531,7 +531,7 @@ export default function App() {
   function exportStyle(): ExportStyle {
     return {
       renderer: rendererRef.current,
-      ink: inkRef.current.color ?? defaultInk(),
+      ink: inkRef.current.color ?? defaultInk(paper),
       paper,
       penBasePerScale:
         PEN_WIDTH_PER_SCALE * inkRef.current.thickness * inkWeightRef.current.pen,
@@ -588,14 +588,56 @@ export default function App() {
         </a>
       </header>
 
-      {/* The paper: the canvas up top, and below it — in real layout, so
-          ink can never run into them — a strip with the status line and
-          the playback control. The strip's height is fixed so the canvas
-          doesn't shift when the button comes and goes. */}
+      {/* The paper: you type on its first line and the handwriting appears
+          beneath your words. Below the ink — in real layout, so ink can
+          never run into it — a strip with the status line, the playback
+          control, and the take's two exits (code and export). The strip's
+          height is fixed so the canvas doesn't shift when buttons come
+          and go. */}
       <div
         className="overflow-hidden rounded-3xl bg-white shadow-sm dark:bg-card"
         style={paper ? { background: paper } : undefined}
       >
+        <div className="flex items-center gap-2 px-4 pt-3">
+          {/* The pen at the margin, dipped in the chosen ink (like the
+              caret, and like the typed words themselves — the ink is the
+              one thing guaranteed legible on this paper). With "no color"
+              on a chosen paper, resolve against the paper like the painters
+              do; on the default card, inherit so the theme keeps working. */}
+          <PenLineIcon
+            className="size-4 shrink-0 text-muted-foreground"
+            style={{ color: color ?? (paper ? defaultInk(paper) : undefined) }}
+            aria-hidden
+          />
+          <Input
+            ref={textInputRef}
+            className="h-10 min-w-0 flex-1 rounded-none border-0 bg-transparent px-0.5 text-base focus-visible:ring-0 md:text-base dark:bg-transparent"
+            style={{
+              color: color ?? (paper ? defaultInk(paper) : undefined),
+              caretColor: color ?? (paper ? defaultInk(paper) : undefined),
+            }}
+            value={text}
+            maxLength={descriptor?.maxTextLength ?? 75}
+            onChange={(event) => setText(event.target.value)}
+            onKeyDown={(event) => event.key === "Enter" && !busy && write()}
+            placeholder="type something to write…"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+          />
+          {/* Same chip treatment as the action buttons on the bottom edge:
+              the bg-card surface keeps it legible on any paper color. */}
+          <Button
+            variant="outline"
+            className="rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
+            onClick={write}
+            disabled={busy}
+            title="every write is a new take"
+          >
+            write
+          </Button>
+        </div>
         <canvas
           ref={canvasRef}
           className="block h-[clamp(140px,20vh,180px)] w-full sm:h-[clamp(170px,30vh,250px)]"
@@ -606,7 +648,7 @@ export default function App() {
               <Button
                 variant="outline"
                 size="icon"
-                className="rounded-full bg-card/90"
+                className="rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
                 title={status === "writing" ? "pause" : "play"}
                 aria-label={status === "writing" ? "pause" : "play"}
                 onClick={togglePlayback}
@@ -632,78 +674,20 @@ export default function App() {
           </p>
           {(status === "ready" || status === "writing" || status === "paused") &&
             offsetsRef.current.length > 0 && (
-              <ExportDialog
-                text={text}
-                getOffsets={() => offsetsRef.current}
-                getStyle={exportStyle}
-              />
+              <>
+                <CodeDialog
+                  params={snippetParams()}
+                  platform={platform}
+                  onPlatformChange={setPlatform}
+                />
+                <ExportDialog
+                  text={text}
+                  getOffsets={() => offsetsRef.current}
+                  getStyle={exportStyle}
+                />
+              </>
             )}
         </div>
-      </div>
-
-      {/* One ruled line, notebook-style: the border-b lives on the row so the
-        * input and the "write" action share the same baseline, like a line of
-        * writing with a note in the margin. */}
-      <div className="flex items-center gap-2 border-b border-foreground/75 transition-colors focus-within:border-foreground">
-        {/* The pen at the margin, dipped in the chosen ink (like the caret). */}
-        <PenLineIcon
-          className="size-4 shrink-0 text-muted-foreground"
-          style={{ color: color ?? undefined }}
-          aria-hidden
-        />
-        <div className="relative min-w-0 flex-1">
-          <Input
-            ref={textInputRef}
-            className={cn(
-              "h-10 rounded-none border-0 bg-transparent px-0.5 text-base focus-visible:ring-0 md:text-base dark:bg-transparent",
-              text && "pr-8",
-            )}
-            // Caret in the chosen ink — the pen is "loaded". No color keeps
-            // the theme caret; the default ink is invisible on dark.
-            style={{ caretColor: color ?? undefined }}
-            value={text}
-            maxLength={descriptor?.maxTextLength ?? 75}
-            onChange={(event) => setText(event.target.value)}
-            onKeyDown={(event) => event.key === "Enter" && !busy && write()}
-            placeholder="type something to write…"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-          />
-          {/* Invisible copy of the text in the input's exact font, so the
-              clear button knows where the writing ends. */}
-          <span
-            ref={textMirrorRef}
-            aria-hidden
-            className="pointer-events-none invisible absolute top-0 left-0 pl-0.5 text-base whitespace-pre"
-          >
-            {text}
-          </span>
-          {text && (
-            <button
-              type="button"
-              aria-label="clear text"
-              className="absolute top-1/2 -translate-y-1/2 cursor-pointer rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground"
-              style={{ left: clearLeft ?? undefined }}
-              onClick={() => {
-                setText("");
-                textInputRef.current?.focus();
-              }}
-            >
-              <XIcon className="size-4" aria-hidden />
-            </button>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          className="h-10 rounded-none px-2 text-foreground/70 underline-offset-[6px] hover:bg-transparent hover:text-foreground hover:underline dark:hover:bg-transparent"
-          onClick={write}
-          disabled={busy}
-          title="every write is a new take"
-        >
-          write
-        </Button>
       </div>
 
       <Collapsible
@@ -908,48 +892,6 @@ export default function App() {
                 </div>
               </div>
             </div>
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-
-      {/* The workbench payoff: the studio settings, emitted as SDK code.
-          The engines are parity-locked across TypeScript and Swift, so the
-          seed above reproduces this exact take anywhere. */}
-      <Collapsible
-        open={codeOpen}
-        onOpenChange={setCodeOpen}
-        className="rounded-3xl bg-[oklch(0.93_0_0)] shadow-sm dark:bg-[oklch(0.23_0_0)]"
-      >
-        <CollapsibleTrigger className="group flex w-full cursor-pointer items-center gap-3 px-4 py-3 text-sm">
-          <span className="font-medium">use in your app</span>
-          <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
-            this exact take as code · seed {seed}
-          </span>
-          <ChevronDownIcon
-            className="size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open:rotate-180"
-            aria-hidden
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="flex flex-col gap-3 border-t px-4 pt-3.5 pb-4">
-            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-              <Segmented
-                aria-label="platform"
-                options={PLATFORMS}
-                value={platform}
-                onChange={setPlatform}
-              />
-              <span className="text-xs">
-                same seed, same strokes — the engines are parity-locked across platforms
-              </span>
-            </div>
-            <CodeBlock code={snippetFor(platform, snippetParams())} />
-            <p className="text-xs text-muted-foreground">
-              write with a <span className="font-medium">pinned</span> seed to keep this take ·{" "}
-              <a className="underline underline-offset-2 hover:text-foreground" href="#/build">
-                full setup guide
-              </a>
-            </p>
           </div>
         </CollapsibleContent>
       </Collapsible>

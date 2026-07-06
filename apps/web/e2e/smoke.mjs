@@ -1,7 +1,7 @@
 /**
  * Headless smoke test: verifies the boot defaults (calligrapher engine,
  * style 2, pen stroke), writes with both engines and stroke types, replays,
- * restyles, pins a seed, reads the code panel's snippets, opens the build
+ * restyles, pins a seed, reads the code dialog's snippets, opens the build
  * page, and checks ink actually lands on the canvas with no console errors.
  *
  *   node e2e/smoke.mjs [baseUrl] [screenshotPath]
@@ -150,23 +150,40 @@ await page.waitForTimeout(2_500);
 if (!(await page.locator("footer").textContent()).includes("seed 12345"))
   fail("pinned write did not keep the seed");
 
-// The code panel emits the current take for both SDKs, seed included.
-await page.getByRole("button", { name: /^use in your app/ }).click();
-const tsSnippet = await page.locator("pre").innerText();
+// The code dialog (the </> button on the paper, next to export) emits the
+// current take for both SDKs, seed included.
+await page.getByRole("button", { name: "use in your app" }).click();
+const codeDialog = page.getByRole("dialog");
+const tsSnippet = await codeDialog.locator("pre").innerText();
 if (!tsSnippet.includes("seed: 12345,") || !tsSnippet.includes("CalligrapherModel"))
   fail("web snippet does not carry the pinned take");
-await page.getByRole("radio", { name: "Swift" }).click();
-const swiftSnippet = await page.locator("pre").innerText();
+await codeDialog.getByRole("radio", { name: "Swift" }).click();
+const swiftSnippet = await codeDialog.locator("pre").innerText();
 if (!swiftSnippet.includes("seed: 12345") || !swiftSnippet.includes("import InkCalligrapher"))
   fail("swift snippet does not carry the pinned take");
+await page.keyboard.press("Escape");
+await codeDialog.waitFor({ state: "detached" });
 
 await page.screenshot({ path: screenshotPath, fullPage: true });
 
-// In-app navigation to the guide and back must keep the dialed-in take
-// (the studio stays mounted, hidden), or the code panel's own guide link
+// The platform choice lives in App, not the dialog, so it survives the
+// rewrite that unmounts the dialog while the worker generates.
+await writeButton.click();
+await page.waitForTimeout(2_500);
+await page.getByRole("button", { name: "use in your app" }).click();
+const swiftChecked = await codeDialog
+  .getByRole("radio", { name: "Swift" })
+  .getAttribute("aria-checked");
+if (swiftChecked !== "true") fail("platform choice did not survive a rewrite");
+
+// Navigating to the guide from inside the dialog must close it (the
+// dialog is portaled above the hash router, so nothing else would — a
+// stale modal would blanket the guide) and keep the dialed-in take
+// (the studio stays mounted, hidden), or the dialog's own guide link
 // would destroy the seed it tells users to carry into their app.
 const inkBeforeGuide = await inkPixels();
-await page.getByRole("link", { name: /build with it/ }).click();
+await codeDialog.getByRole("link", { name: "full setup guide" }).click();
+await codeDialog.waitFor({ state: "detached", timeout: 5_000 });
 await page.getByRole("heading", { name: "Build with Longhand" }).waitFor({ timeout: 5_000 });
 await page.getByRole("link", { name: "studio", exact: true }).first().click();
 await page

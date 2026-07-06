@@ -2,6 +2,21 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/** Close a portaled dialog on any hash navigation. The dialogs render
+ * above the hash router (portaled to body), and the studio stays mounted
+ * under the guide, so nothing else would close them: an open modal would
+ * ride along — backdrop, scroll lock and all — on top of the other page.
+ * Covers in-dialog links, the header pill, and browser back/forward. */
+export function useCloseOnHashNavigate(close: () => void) {
+  const closeRef = useRef(close);
+  closeRef.current = close;
+  useEffect(() => {
+    const onHashChange = () => closeRef.current();
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+}
+
 /** iOS-style segmented control: a radiogroup whose selected pill slides to
  * the picked option. The pill is measured off the selected button, so it
  * tracks variable label widths and the flex-stretched mobile layout. */

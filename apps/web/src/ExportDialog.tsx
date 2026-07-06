@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useCloseOnHashNavigate } from "./controls.js";
 import {
   downloadBlob,
   exportFileName,
@@ -109,6 +110,7 @@ export default function ExportDialog({ text, getOffsets, getStyle }: ExportDialo
     }
     setOpen(next);
   }
+  useCloseOnHashNavigate(() => openChange(false));
 
   async function download() {
     const controller = new AbortController();
@@ -207,7 +209,7 @@ export default function ExportDialog({ text, getOffsets, getStyle }: ExportDialo
           <Button
             variant="outline"
             size="icon"
-            className="rounded-full bg-card/90"
+            className="rounded-full bg-card/90 dark:bg-card/90 dark:hover:bg-accent"
             title="export"
             aria-label="export"
           />
