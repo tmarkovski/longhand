@@ -17,7 +17,13 @@ import {
   Segmented,
   useCloseOnHashNavigate,
 } from "./controls.js";
-import { PLATFORMS, snippetFor, type Platform, type SnippetParams } from "./snippets.js";
+import {
+  PLATFORM_LANG,
+  PLATFORMS,
+  snippetFor,
+  type Platform,
+  type SnippetParams,
+} from "./snippets.js";
 
 /**
  * The workbench payoff, sitting opposite export on the paper: the same
@@ -80,7 +86,11 @@ export default function CodeDialog({
             same seed, same strokes · the engines are parity-locked across platforms
           </span>
         </div>
-        <CodeBlock className="min-w-0" code={snippetFor(platform, params)} />
+        <CodeBlock
+          className="min-w-0"
+          language={PLATFORM_LANG[platform]}
+          code={snippetFor(platform, params)}
+        />
         <p className="text-xs text-muted-foreground">
           write with a <span className="font-medium">locked</span> seed to keep this take ·{" "}
           <a className="underline underline-offset-2 hover:text-foreground" href="#/build">

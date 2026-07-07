@@ -10,6 +10,7 @@
  * the export button produces.
  */
 
+import type { SnippetLang } from "./highlight.js";
 import type { EngineId, RendererKind } from "./protocol.js";
 
 /** How consumers reference the repo; single source for panel + docs. */
@@ -27,6 +28,13 @@ export const PLATFORMS: ReadonlyArray<{ value: Platform; label: string }> = [
   { value: "swift", label: "Swift" },
   { value: "kotlin", label: "Android · Kotlin" },
 ];
+
+/** What the highlighter should read each platform's snippet as. */
+export const PLATFORM_LANG: Record<Platform, SnippetLang> = {
+  web: "ts",
+  swift: "swift",
+  kotlin: "kotlin",
+};
 
 export interface SnippetParams {
   engine: EngineId;

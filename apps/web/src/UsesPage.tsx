@@ -12,7 +12,7 @@ import CodeBlock from "./CodeBlock.js";
 import { Segmented, SiteFooter, SiteHeader, useCloseOnHashNavigate } from "./controls.js";
 import { shareHash } from "./share.js";
 import { SHOWCASE, type ShowcaseItem } from "./showcase.js";
-import { PLATFORMS, snippetFor, type Platform } from "./snippets.js";
+import { PLATFORM_LANG, PLATFORMS, snippetFor, type Platform } from "./snippets.js";
 import emptySvg from "./showcase/empty.svg?raw";
 import gamenoteSvg from "./showcase/gamenote.svg?raw";
 import greetingSvg from "./showcase/greeting.svg?raw";
@@ -240,7 +240,11 @@ export default function UsesPage() {
                 same seed, same strokes · the engines are parity-locked across platforms
               </span>
             </div>
-            <CodeBlock className="min-w-0" code={snippetFor(platform, codeItem.take)} />
+            <CodeBlock
+              className="min-w-0"
+              language={PLATFORM_LANG[platform]}
+              code={snippetFor(platform, codeItem.take)}
+            />
             <p className="text-xs text-muted-foreground">
               full setup in{" "}
               <a className="underline underline-offset-2 hover:text-foreground" href="#/build">

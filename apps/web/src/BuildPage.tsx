@@ -5,6 +5,7 @@ import type { EngineId } from "./protocol.js";
 import {
   KOTLIN_GROUP,
   NPM_INSTALL,
+  PLATFORM_LANG,
   PLATFORMS,
   SWIFT_DEPENDENCY,
   snippetFor,
@@ -220,14 +221,14 @@ export default function BuildPage() {
               Install the whole repo as one package, straight from GitHub (npm and pnpm verified;
               any manager that speaks the github: protocol works the same way):
             </p>
-            <CodeBlock code={NPM_INSTALL} />
+            <CodeBlock language="shell" code={NPM_INSTALL} />
             <p className="text-sm text-muted-foreground">
               The packages ship as TypeScript source, so use a bundler that reads TS out of
               node_modules — Vite and anything else esbuild-based does. The weights ship inside
               the package and become a hashed asset via the <code className="text-xs">?url</code>{" "}
               import; nothing to host separately.
             </p>
-            <CodeBlock code={quickstart} />
+            <CodeBlock language={PLATFORM_LANG[platform]} code={quickstart} />
             <p className="text-sm text-muted-foreground">
               Generation is CPU-bound (a second or two per line) — run it in a Web Worker like
               the studio does so the page never janks. The animated SVG plays everywhere,
@@ -241,8 +242,8 @@ export default function BuildPage() {
               bundles its weights as a package resource, so there is nothing to download or
               copy:
             </p>
-            <CodeBlock code={SWIFT_PACKAGE_SNIPPET} />
-            <CodeBlock code={quickstart} />
+            <CodeBlock language="swift" code={SWIFT_PACKAGE_SNIPPET} />
+            <CodeBlock language={PLATFORM_LANG[platform]} code={quickstart} />
             <p className="text-sm text-muted-foreground">
               The engines run comfortably past 30x real pen speed on Apple silicon. For a full
               SwiftUI canvas that replays strokes at writing pace — the native equivalent of the
@@ -257,8 +258,8 @@ export default function BuildPage() {
               JitPack straight from the repo. Each engine JAR bundles its weights as a
               resource, so there is nothing to download or copy:
             </p>
-            <CodeBlock code={KOTLIN_GRADLE_SNIPPET} />
-            <CodeBlock code={quickstart} />
+            <CodeBlock language="kotlin" code={KOTLIN_GRADLE_SNIPPET} />
+            <CodeBlock language={PLATFORM_LANG[platform]} code={quickstart} />
             <p className="text-sm text-muted-foreground">
               Generation is CPU-bound (a second or two per line) — run it off the main thread,
               like a <code className="text-xs">Dispatchers.Default</code> coroutine. For a full
