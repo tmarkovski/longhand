@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { ArrowLeftIcon } from "lucide-react";
 import CodeBlock from "./CodeBlock.js";
-import { Segmented, SiteFooter } from "./controls.js";
+import { Segmented, SiteFooter, SiteHeader } from "./controls.js";
 import type { EngineId } from "./protocol.js";
 import {
   KOTLIN_GROUP,
@@ -154,15 +153,9 @@ export default function BuildPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-7 sm:px-6 sm:py-10">
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex flex-col gap-5">
+        <SiteHeader page="build" />
         <div>
-          <a
-            href="#/"
-            className="mb-2 flex w-fit items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeftIcon className="size-3.5" aria-hidden />
-            studio
-          </a>
           <h1 className="font-heading text-2xl font-semibold tracking-tight">Build with Longhand</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             the studio's handwriting engines as packages for your own app — installed straight
@@ -337,7 +330,7 @@ export default function BuildPage() {
         lead={
           <>
             the model weights descend from research checkpoints (unlicensed); a clean
-            training run is planned ·{" "}
+            training run is planned
           </>
         }
       />

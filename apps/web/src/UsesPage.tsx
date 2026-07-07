@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ArrowLeftIcon, CheckIcon, CodeIcon, PenLineIcon } from "lucide-react";
+import { CheckIcon, CodeIcon, PenLineIcon } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import CodeBlock from "./CodeBlock.js";
-import { Segmented, SiteFooter, useCloseOnHashNavigate } from "./controls.js";
+import { Segmented, SiteFooter, SiteHeader, useCloseOnHashNavigate } from "./controls.js";
 import { shareHash } from "./share.js";
 import { SHOWCASE, type ShowcaseItem } from "./showcase.js";
 import { PLATFORMS, snippetFor, type Platform } from "./snippets.js";
@@ -174,22 +174,18 @@ export default function UsesPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-7 sm:px-6 sm:py-10">
-      <header>
-        <a
-          href="#/"
-          className="mb-2 flex w-fit items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeftIcon className="size-3.5" aria-hidden />
-          studio
-        </a>
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          What can you make with Longhand?
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          six little scenes, each one a real take from the engines. watch it write, remix it
-          live in the studio, or copy the code that redraws it stroke for stroke in your own
-          app: web, iOS, or Android.
-        </p>
+      <header className="flex flex-col gap-5">
+        <SiteHeader page="uses" />
+        <div>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            What can you make with Longhand?
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            six little scenes, each one a real take from the engines. watch it write, remix it
+            live in the studio, or copy the code that redraws it stroke for stroke in your own
+            app: web, iOS, or Android.
+          </p>
+        </div>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2">

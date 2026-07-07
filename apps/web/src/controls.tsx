@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
+import { CoffeeIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { REPO_URL } from "./snippets.js";
 
@@ -154,10 +154,147 @@ const PAGE_LINKS = [
   { page: "build", href: "#/build", label: "build with it" },
 ] as const;
 
-/** The one-line footer all pages share: page links on the left, an icon
- * cluster — the repo and the theme toggle — on the right. `lead` is a
- * page's own closing words, ahead of the links (the guide keeps its
- * weights note there). */
+/** An icon-circle link in the letterhead, unrolling its label on hover in
+ * the paper strip's chip language — but IN flow, like the play chip, so
+ * the growth pushes the nav links along and rides them back (an overlay
+ * smeared its label over the neighbors'). chip-reverse pins the icon and
+ * rolls the label out to its LEFT; the letterhead cluster is pinned to
+ * the container's right edge, so both icons hold perfectly still on
+ * screen while only the links slide. Sized to the nav's quiet scale
+ * (28px), not the strip's 32. */
+function HeaderChip({
+  href,
+  label,
+  children,
+}: {
+  href: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <a
+      className="chip chip-reverse flex shrink-0 items-center rounded-full bg-card/80 p-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40 dark:hover:bg-[oklch(0.32_0.012_70)]"
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      aria-label={label}
+      title={label}
+    >
+      {children}
+      {/* Padding inside the label so it unrolls with the text: the chip's
+          p-1.5 is icon-circle padding, too tight against the pill's
+          rounded cap (the far cap is the left one here). */}
+      <ChipLabel>
+        <span className="pl-1.5">{label}</span>
+      </ChipLabel>
+    </a>
+  );
+}
+
+function formatStars(count: number): string {
+  return count >= 1000 ? `${(count / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(count);
+}
+
+/** The star count for the letterhead's GitHub chip: fetched once, cached
+ * in localStorage for six hours (404s too, so a private repo costs one
+ * request per visitor per window). Null until known — and it stays null
+ * while the repo is private, so the chip is simply an icon circle until
+ * the repo opens up and the count lights up on its own. */
+function useGithubStars(): string | null {
+  const [stars, setStars] = useState<string | null>(null);
+  useEffect(() => {
+    const KEY = "gh-stars";
+    const TTL = 6 * 60 * 60 * 1000;
+    try {
+      const cached = JSON.parse(localStorage.getItem(KEY) ?? "null") as {
+        count: number | null;
+        at: number;
+      } | null;
+      if (cached && Date.now() - cached.at < TTL) {
+        // A zero would read worse than no badge; show counts from 1 up.
+        if (typeof cached.count === "number" && cached.count > 0)
+          setStars(formatStars(cached.count));
+        return;
+      }
+    } catch {
+      // Unreadable cache; fall through to the fetch.
+    }
+    let cancelled = false;
+    fetch(REPO_URL.replace("https://github.com/", "https://api.github.com/repos/"))
+      .then((res) => (res.ok ? res.json() : null))
+      .then((repo: { stargazers_count?: number } | null) => {
+        const count = typeof repo?.stargazers_count === "number" ? repo.stargazers_count : null;
+        try {
+          localStorage.setItem(KEY, JSON.stringify({ count, at: Date.now() }));
+        } catch {
+          // Storage may be unavailable (private mode).
+        }
+        if (!cancelled && count !== null && count > 0) setStars(formatStars(count));
+      })
+      .catch(() => {
+        // Offline is fine; the chip stays an icon.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return stars;
+}
+
+/** The letterhead all pages share: the wordmark on the left, the other
+ * pages and the support links on the right — the footer's voice lifted to
+ * the top of the page. On the studio the wordmark is the page's h1; on
+ * the other pages it shrinks into a link home (their own titles keep the
+ * h1) and replaces the old one-off back-to-the-studio links. The row
+ * wraps on narrow screens; ml-auto keeps the nav right-aligned even when
+ * it drops to its own line. */
+export function SiteHeader({ page }: { page: (typeof PAGE_LINKS)[number]["page"] }) {
+  const stars = useGithubStars();
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+      {page === "studio" ? (
+        <h1 className="font-heading text-2xl font-medium tracking-tight italic">longhand</h1>
+      ) : (
+        <a
+          className="font-heading text-lg font-medium tracking-tight italic transition-colors hover:text-primary"
+          href="#/"
+        >
+          longhand
+        </a>
+      )}
+      <nav aria-label="site" className="ml-auto flex items-center gap-4">
+        {PAGE_LINKS.filter((link) => link.page !== page).map((link) => (
+          <a
+            key={link.page}
+            className="py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            href={link.href}
+          >
+            {link.label}
+          </a>
+        ))}
+        <span className="flex items-center gap-2">
+          <HeaderChip href={COFFEE_URL} label="buy me a coffee">
+            <CoffeeIcon className="size-4 shrink-0" aria-hidden />
+          </HeaderChip>
+          <HeaderChip href={REPO_URL} label="star on github">
+            {/* The chip is row-reversed, so DOM order runs right-to-left:
+                the count first (far right), then the mark — reading as
+                mark-then-count, the badge convention. Physical padding
+                doesn't flip with flex order, so pl-1 is the gap between
+                them. */}
+            {stars !== null && <span className="pl-1">{stars}</span>}
+            <GithubMark className="size-4 shrink-0" />
+          </HeaderChip>
+        </span>
+      </nav>
+    </div>
+  );
+}
+
+/** The footer all pages share: page links on the left, an icon cluster —
+ * the repo and the theme toggle — on the right. `lead` is a page's own
+ * closing words, on their own line above the links (the guide keeps its
+ * weights note there) so a disclaimer doesn't read as part of the nav. */
 export function SiteFooter({
   page,
   lead,
@@ -168,30 +305,32 @@ export function SiteFooter({
   onThemeApply?: () => void;
 }) {
   return (
-    <footer className="flex items-center justify-between gap-3 text-xs text-muted-foreground/80">
-      <span>
-        {lead}
-        {PAGE_LINKS.filter((link) => link.page !== page).map((link) => (
-          <span key={link.page}>
-            <FooterLink href={link.href}>{link.label}</FooterLink>
-            {" · "}
-          </span>
-        ))}
-        <FooterLink href={COFFEE_URL}>buy me a coffee</FooterLink>
-      </span>
-      <span className="flex shrink-0 items-center gap-0.5">
-        <a
-          className="rounded-full p-1 transition-colors hover:text-foreground"
-          href={REPO_URL}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="source on GitHub"
-          title="source on GitHub"
-        >
-          <GithubMark className="size-3.5" />
-        </a>
-        <ThemeToggle onApply={onThemeApply} />
-      </span>
+    <footer className="flex flex-col gap-1 text-xs text-muted-foreground/80">
+      {lead !== undefined && <p>{lead}</p>}
+      <div className="flex items-center justify-between gap-3">
+        <span>
+          {PAGE_LINKS.filter((link) => link.page !== page).map((link) => (
+            <span key={link.page}>
+              <FooterLink href={link.href}>{link.label}</FooterLink>
+              {" · "}
+            </span>
+          ))}
+          <FooterLink href={COFFEE_URL}>buy me a coffee</FooterLink>
+        </span>
+        <span className="flex shrink-0 items-center gap-0.5">
+          <a
+            className="rounded-full p-1 transition-colors hover:text-foreground"
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="source on GitHub"
+            title="source on GitHub"
+          >
+            <GithubMark className="size-3.5" />
+          </a>
+          <ThemeToggle onApply={onThemeApply} />
+        </span>
+      </div>
     </footer>
   );
 }

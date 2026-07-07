@@ -4,8 +4,6 @@ import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@lon
 import {
   ArrowRightIcon,
   ChevronDownIcon,
-  CodeIcon,
-  CoffeeIcon,
   LinkIcon,
   PauseIcon,
   PenLineIcon,
@@ -29,9 +27,9 @@ import {
   chipClass,
   chipRightClass,
   chipSlotClass,
-  COFFEE_URL,
   Segmented,
   SiteFooter,
+  SiteHeader,
 } from "./controls.js";
 import ExportDialog from "./ExportDialog.js";
 import type { ExportStyle } from "./export.js";
@@ -793,47 +791,11 @@ export default function App() {
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-7 sm:px-6 sm:py-10">
       <header>
-        <div className="flex items-center justify-between gap-4">
-          {/* Lowercase as a wordmark, like the rest of the studio's voice;
-              in prose (the guide, this subtitle) the name stays a normal
-              capitalized noun. */}
-          <h1 className="font-heading text-2xl font-medium tracking-tight italic">longhand</h1>
-          <div className="flex shrink-0 items-center gap-2">
-            <a
-              href="#/build"
-              className="flex shrink-0 items-center gap-1.5 rounded-full bg-card/80 px-3 py-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40"
-            >
-              <CodeIcon className="size-3.5" aria-hidden />
-              build with it
-            </a>
-            {/* The support link: a quiet icon in the build pill's clothes,
-                speaking the strip chips' unroll language — but IN flow,
-                like the play chip, not overlay-anchored: unrolling over
-                the build pill smeared the two labels together, so instead
-                the label pushes the pill leftward and rides it back. Icon
-                LEFT of the label, matching the build pill beside it; the
-                icon rides the expanding edge leftward, which is safe here
-                (unlike the strip) because the pill grows around the
-                pointer — the cursor never leaves the link. Sized to the
-                pill's 28px height, not the strip chips' 32. */}
-            <a
-              className="chip flex shrink-0 items-center rounded-full bg-card/80 p-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40 dark:hover:bg-[oklch(0.32_0.012_70)]"
-              href={COFFEE_URL}
-              target="_blank"
-              rel="noreferrer"
-              aria-label="buy me a coffee"
-              title="buy me a coffee"
-            >
-              <CoffeeIcon className="size-4 shrink-0" aria-hidden />
-              {/* Padding inside the label so it unrolls with the text: the
-                  chip's p-1.5 is icon-circle padding, too tight against the
-                  pill's rounded cap; 6 more matches the build pill's px-3. */}
-              <ChipLabel>
-                <span className="pr-1.5">buy me a coffee</span>
-              </ChipLabel>
-            </a>
-          </div>
-        </div>
+        {/* The shared letterhead; here the wordmark inside it is the
+            studio's h1. Lowercase as a wordmark, like the rest of the
+            studio's voice; in prose (the guide, this subtitle) the name
+            stays a normal capitalized noun. */}
+        <SiteHeader page="studio" />
         {/* Below the wordmark row, so it can run the full width. */}
         <p className="mt-1 text-sm text-muted-foreground">
           ai handwriting synthesis in your browser or native mobile apps. export to

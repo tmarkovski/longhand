@@ -24,6 +24,12 @@ const context = await browser.newContext({
   permissions: ["clipboard-read", "clipboard-write"],
 });
 const page = await context.newPage();
+// The letterhead's star-count fetch must not put the suite at the mercy of
+// api.github.com (unauthenticated rate limits in CI; a failed response
+// logs a console error the suite would count): serve a canned answer.
+await page.route("https://api.github.com/**", (route) =>
+  route.fulfill({ json: { stargazers_count: 42 } }),
+);
 const errors = [];
 page.on("console", (message) => {
   if (message.type() === "error") errors.push(message.text());
