@@ -187,6 +187,36 @@ const PAPER_COLORS: ReadonlyArray<{ name: string; value: string | null }> = [
   { name: "sky", value: "#e9f1f7" },
 ];
 
+/** Pre-mixed takes for the blank paper: one tap writes the mix, no typing
+ * needed. Every field is curated, not rolled — this list is where to tweak
+ * what the blank paper offers. The taste so far: ribbon suits the short
+ * phrases and the pen carries the longer ones, and the four spread across
+ * both models and both upper legibilities so the chips show the breadth.
+ * Each chip previews its own mix (its text in its ink on its paper); every
+ * ink-on-paper pairing clears AA (4.5:1) and every character is in both
+ * engines' alphabets, so a tap never drops anything. */
+const PRESETS: ReadonlyArray<{
+  text: string;
+  ink: string;
+  paper: string;
+  engine: EngineId;
+  stroke: RendererKind;
+  legibility: Legibility;
+}> = [
+  // blue on sky
+  { text: "hello there", ink: "#1e4fd8", paper: "#e9f1f7",
+    engine: "calligrapher", stroke: "ribbon", legibility: "normal" },
+  // sepia on parchment
+  { text: "thank you so much", ink: "#7a4a21", paper: "#f0e6cf",
+    engine: "graves", stroke: "pen", legibility: "high" },
+  // violet on ivory
+  { text: "happy birthday!", ink: "#6d28d9", paper: "#f7f2e7",
+    engine: "calligrapher", stroke: "pen", legibility: "normal" },
+  // red on rose
+  { text: "with love", ink: RED_INK, paper: "#f8edee",
+    engine: "graves", stroke: "ribbon", legibility: "high" },
+];
+
 /** A shared color that isn't in a palette belongs on the custom swatch. */
 function customSwatch(
   value: string | null | undefined,
@@ -295,6 +325,10 @@ export default function App() {
     seed: number;
   } | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  // The clear X mid-fade: the canvas is riding its opacity down to
+  // transparent, and the wipe behind it hasn't happened yet.
+  const [clearing, setClearing] = useState(false);
+  const clearTimerRef = useRef(0);
   // Bumped when "write" is tapped with nothing on the line and the caret
   // already there: keying the pen icon on it restarts the wiggle animation.
   const [penNudge, setPenNudge] = useState(0);
@@ -371,6 +405,10 @@ export default function App() {
           setNote(message.message);
           break;
         case "start":
+          // A clear fade still pending would wipe this new take from under
+          // the worker; the start reset below is that wipe anyway.
+          window.clearTimeout(clearTimerRef.current);
+          setClearing(false);
           offsetsRef.current = [];
           stepsRef.current = [];
           ribbonRef.current = null;
@@ -405,6 +443,7 @@ export default function App() {
       worker.postMessage({ type: "engine", engine: BOOT_TAKE.engine } satisfies SelectEngineRequest);
     return () => {
       cancelAnimationFrame(rafRef.current);
+      window.clearTimeout(clearTimerRef.current);
       worker.terminate();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -724,6 +763,9 @@ export default function App() {
       else setPenNudge((nudge) => nudge + 1);
       return;
     }
+    // A write typed during the clear fade: land the wipe now, so its timer
+    // can't fire mid-generation and eat the new take.
+    if (clearing) finishClear();
     const nextSeed = seedMode === "pinned" ? seed : Math.floor(Math.random() * 1_000_000);
     setSeed(nextSeed);
     const request: WriteRequest = {
@@ -738,21 +780,74 @@ export default function App() {
     setTake({ engine, text: cleaned, legibility, style, seed: nextSeed });
   }
 
-  /** The X beside write: back to a blank line and blank paper. Only the
-   * take goes — settings, seed, and engine stay dialed in — and the caret
-   * lands on the line, ready for the next one. */
-  function clearAll() {
-    cancelAnimationFrame(rafRef.current);
+  /** One tap on the blank paper writes the preset exactly as curated —
+   * text, ink, paper, model, stroke, and legibility are all its own; only
+   * the seed rolls, so repeat taps give new takes of the same mix. The
+   * write goes through the share-link door (queue the take, request the
+   * engine, write on its ready) because the mix can name a model that
+   * isn't loaded yet. */
+  function tryPreset(preset: (typeof PRESETS)[number]) {
+    setText(preset.text);
+    setColor(preset.ink);
+    setPaper(preset.paper);
+    setLegibility(preset.legibility);
+    if (preset.engine !== engineRef.current) {
+      // Same drill as switchEngine: the old line can't be re-laid-out by
+      // the new renderer, and the style list belongs to the new engine.
+      setStyle(null);
+      offsetsRef.current = [];
+      setStatus("loading");
+      setNote("");
+    }
+    setEngine(preset.engine);
+    engineRef.current = preset.engine;
+    bootWriteRef.current = {
+      engine: preset.engine,
+      text: preset.text,
+      legibility: preset.legibility,
+      style: null, // the engine's own default hand
+      stroke: preset.stroke,
+      seed: seedMode === "pinned" ? seed : null,
+      ink: preset.ink,
+      paper: preset.paper,
+      thickness,
+      speed,
+    };
+    workerRef.current?.postMessage({
+      type: "engine",
+      engine: preset.engine,
+    } satisfies SelectEngineRequest);
+  }
+
+  /** The wipe a clear fade covers: take, ink, bitmap, all gone. Cancels
+   * its own timer so calling it early (a write racing the fade) is safe. */
+  function finishClear() {
+    window.clearTimeout(clearTimerRef.current);
     offsetsRef.current = [];
     stepsRef.current = [];
     ribbonRef.current = null;
     ribbonPathsRef.current = [];
     clearCanvas();
-    setText("");
     setTake(null);
+    setStatus((current) => (current === "writing" || current === "paused" ? "ready" : current));
+    setClearing(false);
+  }
+
+  /** The X beside write: back to a blank line and blank paper. Only the
+   * take goes — settings, seed, and engine stay dialed in — and the caret
+   * lands on the line, ready for the next one. The line empties at once
+   * (nothing should sit between the user and typing), but the ink doesn't
+   * blink out: the canvas fades to transparent first, and the bitmap is
+   * wiped under the cover of full transparency. */
+  function clearAll() {
+    if (clearing) return;
+    cancelAnimationFrame(rafRef.current);
+    setText("");
     setNote("");
-    if (status === "writing" || status === "paused") setStatus("ready");
     textInputRef.current?.focus();
+    if (offsetsRef.current.length === 0) return finishClear(); // nothing inked, nothing to fade
+    setClearing(true);
+    clearTimerRef.current = window.setTimeout(finishClear, 300);
   }
 
   /** Play/pause: freeze the pen mid-line, pick up where it stopped, or —
@@ -882,9 +977,11 @@ export default function App() {
           never run into it — a strip with the status line, the playback
           control, and the take's three exits (share, code, export). The
           strip's height is fixed so the canvas doesn't shift when buttons
-          come and go. */}
+          come and go. A paper change crossfades (transition-colors) — a new
+          sheet slid under the ink, not a snap; color-only, so it stays under
+          reduced motion. */}
       <div
-        className="overflow-hidden rounded-2xl bg-card shadow-sm [--ink:var(--ink-light)] dark:[--ink:var(--ink-dark)]"
+        className="overflow-hidden rounded-2xl bg-card shadow-sm transition-colors duration-500 [--ink:var(--ink-light)] dark:[--ink:var(--ink-dark)]"
         style={{ ...(paper ? { background: paper } : undefined), ...inkShown }}
       >
         <div className="flex items-center gap-2 px-4 pt-3">
@@ -965,12 +1062,46 @@ export default function App() {
             )}
           </Button>
         </div>
-        <canvas
-          ref={canvasRef}
-          role="img"
-          aria-label={take ? `handwriting: "${take.text}"` : "blank paper"}
-          className="block h-[clamp(140px,20vh,180px)] w-full sm:h-[clamp(170px,30vh,250px)]"
-        />
+        <div className="relative">
+          {/* The clear X fades the ink out (opacity), and the bitmap wipe
+              lands only once it's invisible; by the time the fade rides
+              back up, the canvas is already blank. */}
+          <canvas
+            ref={canvasRef}
+            role="img"
+            aria-label={take ? `handwriting: "${take.text}"` : "blank paper"}
+            className={cn(
+              "block h-[clamp(140px,20vh,180px)] w-full transition-opacity duration-300 sm:h-[clamp(170px,30vh,250px)]",
+              clearing && "opacity-0",
+            )}
+          />
+          {/* Pre-mixed takes on the blank paper: each chip is a swatch of
+              its own mix (its text in its ink on its paper), and one tap
+              writes it. Gone the moment there's a take or a first keystroke
+              — the paper belongs to the user's words — and back after
+              clear. Disabled, not hidden, while the model loads: something
+              to look forward to on the empty paper. */}
+          {take === null && text === "" && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4">
+              <span className="text-xs text-muted-foreground">…or try one of these</span>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                {PRESETS.map((preset) => (
+                  <button
+                    key={preset.text}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => tryPreset(preset)}
+                    title={`write "${preset.text}" in this mix`}
+                    className="cursor-pointer rounded-full border border-black/10 px-3 py-1.5 text-xs shadow-xs transition hover:shadow-sm disabled:opacity-50"
+                    style={{ background: preset.paper, color: preset.ink }}
+                  >
+                    {preset.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         <div className="flex h-12 items-center gap-3 px-3 pb-1">
           {/* In flow, unlike the right trio: its unroll pushes the status
               text along for the ride (a welcome nudge for text, where it

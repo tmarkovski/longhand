@@ -318,10 +318,17 @@ await page.goto("about:blank");
 await page.goto(sharedUrl);
 await expectSharedTake("cold load");
 
-// The clear X also wipes a rendered take: blank line, blank paper, gone.
+// The clear X also wipes a rendered take: the line empties at once, the
+// ink fades out (canvas opacity), and the bitmap wipe lands only after
+// the fade — so poll for the blank paper instead of expecting it now.
 await page.getByRole("button", { name: "clear", exact: true }).click();
 if ((await textBox.inputValue()) !== "") fail("clear X did not empty the replayed text");
-if ((await inkPixels()) !== 0) fail("clear X did not blank the paper");
+let clearedInk = await inkPixels();
+for (let i = 0; i < 10 && clearedInk !== 0; i++) {
+  await page.waitForTimeout(150);
+  clearedInk = await inkPixels();
+}
+if (clearedInk !== 0) fail("clear X did not blank the paper");
 if (!(await page.getByRole("button", { name: "clear", exact: true }).isDisabled()))
   fail("clear X should hide after wiping the take");
 
