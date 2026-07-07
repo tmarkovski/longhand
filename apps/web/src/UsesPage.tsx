@@ -49,7 +49,10 @@ function Ink({ svg, text, className }: { svg: string; text: string; className?: 
       role="img"
       aria-label={`"${text}" writing itself in ink`}
       className={cn("[&>svg]:h-full [&>svg]:w-full", className)}
-      dangerouslySetInnerHTML={{ __html: svg }}
+      // The wrapper carries the accessible name; the generated svg inside
+      // has a bare role="img" of its own, so hide it or it reads twice —
+      // once labeled, once as a nameless image.
+      dangerouslySetInnerHTML={{ __html: svg.replace("<svg ", '<svg aria-hidden="true" ') }}
     />
   );
 }
@@ -87,17 +90,17 @@ function Scene({ item }: { item: ShowcaseItem }) {
           <div className="border-b border-neutral-300 px-3">
             <Ink svg={svg} text={text} className="mx-auto h-16 max-w-60" />
           </div>
-          <div className="text-[10px] text-neutral-400">signature</div>
+          <div className="text-[10px] text-neutral-500">signature</div>
         </div>
       );
     case "postscript":
       return (
-        <div className="flex h-44 flex-col gap-2 rounded-xl bg-white p-4 text-[10px] text-neutral-400">
+        <div className="flex h-44 flex-col gap-2 rounded-xl bg-white p-4 text-[10px] text-neutral-500">
           <div>
-            <span className="text-neutral-500">to:</span> you
+            <span className="text-neutral-600">to:</span> you
           </div>
           <div className="border-b border-neutral-200 pb-1.5">
-            <span className="text-neutral-500">subject:</span> a small thank you
+            <span className="text-neutral-600">subject:</span> a small thank you
           </div>
           <Bar className="w-full" />
           <Bar className="w-3/4" />
@@ -134,12 +137,12 @@ function Scene({ item }: { item: ShowcaseItem }) {
 
 function UseCaseCard({ item, onCode }: { item: ShowcaseItem; onCode: (item: ShowcaseItem) => void }) {
   const exit =
-    "flex cursor-pointer items-center gap-1.5 text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground";
+    "flex cursor-pointer items-center gap-1.5 py-1 text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground";
   return (
     <article className="flex flex-col gap-3 rounded-2xl bg-[oklch(0.93_0.012_85)] p-4 shadow-sm dark:bg-[oklch(0.235_0.012_70)]">
       <Scene item={item} />
       <div className="flex flex-col gap-1.5 px-1">
-        <h3 className="font-medium">{item.title}</h3>
+        <h2 className="font-medium">{item.title}</h2>
         <p className="text-sm text-muted-foreground">{item.caption}</p>
       </div>
       <div className="mt-auto flex items-center gap-4 px-1 pb-1 text-xs">

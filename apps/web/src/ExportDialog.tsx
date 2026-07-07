@@ -193,7 +193,7 @@ export default function ExportDialog({ text, getOffsets, getStyle }: ExportDialo
                     {unsupported ? "not supported in this browser" : option.description}
                   </span>
                 </span>
-                <span className="text-[11px] text-muted-foreground/70">{option.extension}</span>
+                <span className="text-[11px] text-muted-foreground">{option.extension}</span>
               </button>
             );
           })}

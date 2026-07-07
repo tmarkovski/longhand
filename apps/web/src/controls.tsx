@@ -128,7 +128,7 @@ function FooterLink({ href, children }: { href: string; children: ReactNode }) {
   const external = href.startsWith("http");
   return (
     <a
-      className="whitespace-nowrap underline underline-offset-2 hover:text-foreground"
+      className="whitespace-nowrap py-1 underline underline-offset-2 hover:text-foreground"
       href={href}
       {...(external ? { target: "_blank", rel: "noreferrer" } : {})}
     >
@@ -305,7 +305,7 @@ export function SiteFooter({
   onThemeApply?: () => void;
 }) {
   return (
-    <footer className="flex flex-col gap-1 text-xs text-muted-foreground/80">
+    <footer className="flex flex-col gap-1 text-xs text-muted-foreground">
       {lead !== undefined && <p>{lead}</p>}
       <div className="flex items-center justify-between gap-3">
         <span>
@@ -319,7 +319,7 @@ export function SiteFooter({
         </span>
         <span className="flex shrink-0 items-center gap-0.5">
           <a
-            className="rounded-full p-1 transition-colors hover:text-foreground"
+            className="rounded-full p-1.5 transition-colors hover:text-foreground"
             href={REPO_URL}
             target="_blank"
             rel="noreferrer"
@@ -388,7 +388,7 @@ export function ThemeToggle({ onApply }: { onApply?: () => void }) {
   return (
     <button
       type="button"
-      className="cursor-pointer rounded-full p-1 transition-colors hover:text-foreground"
+      className="cursor-pointer rounded-full p-1.5 transition-colors hover:text-foreground"
       title={`theme: ${theme}`}
       aria-label={`theme: ${theme}`}
       onClick={cycle}

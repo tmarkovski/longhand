@@ -280,7 +280,12 @@ export default function BuildPage() {
           reproduces it stroke for stroke — the TypeScript, Swift, and Kotlin engines are
           parity-locked to the float, so a pinned seed is a portable take.
         </p>
-        <div className="overflow-x-auto rounded-2xl bg-[oklch(0.93_0.012_85)] shadow-sm dark:bg-[oklch(0.235_0.012_70)]">
+        {/* tabIndex: the table scrolls sideways on narrow screens, and a
+            scroll container must be focusable to scroll by keyboard. */}
+        <div
+          tabIndex={0}
+          className="overflow-x-auto rounded-2xl bg-[oklch(0.93_0.012_85)] shadow-sm dark:bg-[oklch(0.235_0.012_70)]"
+        >
           <table className="w-full min-w-[560px] border-collapse text-sm">
             <thead>
               <tr className="text-left text-xs text-muted-foreground">

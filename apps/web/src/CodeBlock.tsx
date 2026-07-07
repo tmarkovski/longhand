@@ -36,7 +36,9 @@ export default function CodeBlock({ code, className }: { code: string; className
       >
         {copied ? <CheckIcon className="size-3.5" aria-hidden /> : <CopyIcon className="size-3.5" aria-hidden />}
       </button>
-      <pre className="overflow-x-auto px-4 py-3.5 text-xs leading-relaxed text-zinc-100">
+      {/* tabIndex: the block scrolls sideways on narrow screens, and a
+          scroll container must be focusable to scroll by keyboard. */}
+      <pre tabIndex={0} className="overflow-x-auto px-4 py-3.5 text-xs leading-relaxed text-zinc-100">
         <code>
           {code.split("\n").map((line, index) => {
             // "//" at line start or after whitespace — not a URL's "://".
@@ -47,7 +49,7 @@ export default function CodeBlock({ code, className }: { code: string; className
                 {comment >= 0 ? (
                   <>
                     {line.slice(0, comment)}
-                    <span className="text-zinc-500">{line.slice(comment)}</span>
+                    <span className="text-zinc-400">{line.slice(comment)}</span>
                   </>
                 ) : (
                   line || " "

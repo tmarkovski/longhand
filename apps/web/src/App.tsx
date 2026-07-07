@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
 import {
@@ -84,6 +84,64 @@ function luminance(hex: string): number {
 function defaultInk(paper: string | null): string {
   if (paper) return luminance(paper) > 0.5 ? DEFAULT_INK : DEFAULT_INK_DARK;
   return document.documentElement.classList.contains("dark") ? DEFAULT_INK_DARK : DEFAULT_INK;
+}
+
+// The paper card's resolved surface colors, mirroring --card in styles.css
+// the way DEFAULT_INK mirrors the page ink: what the typed line actually
+// sits on when no paper is chosen.
+const CARD_LIGHT = "#fefdfa";
+const CARD_DARK = "#1d1914";
+
+/** WCAG relative luminance — gamma-corrected, unlike the cheap polarity
+ * check above, because this one feeds a real threshold (4.5:1). */
+function wcagLuminance(hex: string): number {
+  let digits = hex.replace("#", "");
+  if (digits.length === 3) digits = [...digits].map((c) => c + c).join("");
+  const packed = parseInt(digits, 16);
+  if (digits.length !== 6 || Number.isNaN(packed)) return 1;
+  const linear = (byte: number) => {
+    const c = byte / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return (
+    0.2126 * linear((packed >> 16) & 255) +
+    0.7152 * linear((packed >> 8) & 255) +
+    0.0722 * linear(packed & 255)
+  );
+}
+
+function contrastRatio(a: string, b: string): number {
+  const first = wcagLuminance(a);
+  const second = wcagLuminance(b);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+}
+
+function mixHex(from: string, to: string, amount: number): string {
+  const parse = (hex: string) => {
+    let digits = hex.replace("#", "");
+    if (digits.length === 3) digits = [...digits].map((c) => c + c).join("");
+    return parseInt(digits, 16);
+  };
+  const a = parse(from);
+  const b = parse(to);
+  const channel = (shift: number) =>
+    Math.round(((a >> shift) & 255) * (1 - amount) + ((b >> shift) & 255) * amount);
+  return `#${[16, 8, 0].map((shift) => channel(shift).toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** The ink as the typed line displays it. The canvas keeps the user's true
+ * color — the take is their artwork — but the line and caret are UI text,
+ * so an ink that can't clear AA on its surface gets pulled toward the
+ * readable pole in steps, keeping its hue: dark red turns rose on the
+ * night desk instead of snapping to white. */
+function legibleOn(ink: string, bg: string): string {
+  const toward =
+    contrastRatio(bg, "#000000") >= contrastRatio(bg, "#ffffff") ? "#000000" : "#ffffff";
+  for (let amount = 0; amount < 1; amount += 0.05) {
+    const shown = mixHex(ink, toward, amount);
+    if (contrastRatio(shown, bg) >= 4.5) return shown;
+  }
+  return toward;
 }
 
 // Thickness is a multiplier on the renderers' tuned ink width: 1x sits in
@@ -790,6 +848,19 @@ export default function App() {
     "size-6 shrink-0 cursor-pointer rounded-full border border-foreground/20 sm:size-5";
   const swatchSelected = "ring-2 ring-foreground ring-offset-2 ring-offset-muted";
 
+  // What the typed line, caret, and pen display in. Both themes are
+  // computed up front and routed through --ink (the dark: variant on the
+  // paper card picks which), because the app doesn't re-render on a theme
+  // toggle — CSS has to carry the switch.
+  const inkShown = ((): CSSProperties | undefined => {
+    const chosen = color ?? (paper ? defaultInk(paper) : null);
+    if (chosen === null) return undefined; // no tint: the inherited page ink, always legible
+    return {
+      "--ink-light": legibleOn(chosen, paper ?? CARD_LIGHT),
+      "--ink-dark": legibleOn(chosen, paper ?? CARD_DARK),
+    } as CSSProperties;
+  })();
+
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-5 px-4 py-7 sm:px-6 sm:py-10">
       <header>
@@ -813,19 +884,18 @@ export default function App() {
           strip's height is fixed so the canvas doesn't shift when buttons
           come and go. */}
       <div
-        className="overflow-hidden rounded-2xl bg-card shadow-sm"
-        style={paper ? { background: paper } : undefined}
+        className="overflow-hidden rounded-2xl bg-card shadow-sm [--ink:var(--ink-light)] dark:[--ink:var(--ink-dark)]"
+        style={{ ...(paper ? { background: paper } : undefined), ...inkShown }}
       >
         <div className="flex items-center gap-2 px-4 pt-3">
-          {/* The pen at the margin, dipped in the chosen ink (like the
-              caret, and like the typed words themselves — the ink is the
-              one thing guaranteed legible on this paper). With "no color"
-              on a chosen paper, resolve against the paper like the painters
-              do; on the default card, inherit so the theme keeps working. */}
+          {/* The pen at the margin, dipped in the chosen ink like the caret
+              and the typed words — all three ride --ink, the display shade
+              legibleOn() guarantees against this paper. With no tint at all
+              (no color, no paper) they inherit, so the theme keeps working. */}
           <PenLineIcon
             key={penNudge}
             className={cn("size-4 shrink-0 text-muted-foreground", penNudge > 0 && "pen-wiggle")}
-            style={{ color: color ?? (paper ? defaultInk(paper) : undefined) }}
+            style={inkShown && { color: "var(--ink)" }}
             aria-hidden
           />
           {/* The notebook rule: a faint baseline under the words, drawn
@@ -834,10 +904,7 @@ export default function App() {
           <Input
             ref={textInputRef}
             className="h-10 min-w-0 flex-1 rounded-none border-0 border-b border-current/15 bg-transparent px-0.5 text-base focus-visible:border-current/30 focus-visible:ring-0 md:text-base dark:bg-transparent"
-            style={{
-              color: color ?? (paper ? defaultInk(paper) : undefined),
-              caretColor: color ?? (paper ? defaultInk(paper) : undefined),
-            }}
+            style={inkShown && { color: "var(--ink)", caretColor: "var(--ink)" }}
             value={text}
             maxLength={descriptor?.maxTextLength ?? 75}
             onChange={(event) => setText(event.target.value)}
@@ -900,6 +967,8 @@ export default function App() {
         </div>
         <canvas
           ref={canvasRef}
+          role="img"
+          aria-label={take ? `handwriting: "${take.text}"` : "blank paper"}
           className="block h-[clamp(140px,20vh,180px)] w-full sm:h-[clamp(170px,30vh,250px)]"
         />
         <div className="flex h-12 items-center gap-3 px-3 pb-1">
@@ -1235,7 +1304,7 @@ export default function App() {
 
       {/* The lineage line, moved out of the header: fine print under the
           two doors, a colophon rather than a claim the masthead makes. */}
-      <p className="-mt-2 text-xs text-muted-foreground/70">
+      <p className="-mt-2 text-xs text-muted-foreground">
         based on{" "}
         <a
           className="underline underline-offset-2 hover:text-foreground"
