@@ -117,6 +117,11 @@ const selectEngine = async (label) => {
   await page.getByRole("radio", { name: label, exact: true }).click();
 };
 
+// The take's seed, read off the options readout (the collapsed one-liner
+// stays in the DOM while the panel is open, just faded to invisible).
+const takeSeed = async () =>
+  (await page.locator(".settings-readout").textContent()).match(/seed (\d+)/)?.[1];
+
 // Boot defaults: calligrapher engine, style 2, pen stroke.
 const calligrapherChecked = await page
   .getByRole("radio", { name: "calligrapher", exact: true })
@@ -151,13 +156,13 @@ await expectDot(false, "after a stroke flip");
 // clicking there should be some ink, but much less than the finished line,
 // and the seed must not change (same take). (Mid-write the same button
 // reads "pause".)
-const seedBeforeReplay = await page.locator("footer").textContent();
+const seedBeforeReplay = await takeSeed();
 await page.getByRole("button", { name: "play", exact: true }).click();
 await page.waitForTimeout(700);
 const replayInk = await inkPixels();
 if (replayInk <= 0 || replayInk >= calligrapherPenInk * 0.8)
   fail(`replay did not restart the animation (${replayInk} vs ${calligrapherPenInk})`);
-if ((await page.locator("footer").textContent()) !== seedBeforeReplay)
+if ((await takeSeed()) !== seedBeforeReplay)
   fail("replay changed the seed — it should reuse the same take");
 
 // Engine switch: the graves model loads (3.6 MB), the style picker
@@ -176,7 +181,7 @@ const freehandInk = await inkPixels();
 await expectDot(false, "after the freehand write");
 
 // Styled write (uses the baked primed state), via the preview picker.
-// Every write draws a fresh seed, so the footer should change.
+// Every write draws a fresh seed, so the readout's seed should change.
 await page.click(".style-picker-trigger");
 await page.getByRole("option", { name: "style 3", exact: true }).click();
 await expectDot(true, "after picking a new style");
@@ -184,7 +189,7 @@ await writeButton.click();
 await page.waitForTimeout(18_000);
 const styledInk = await inkPixels();
 await expectDot(false, "after the styled write");
-if ((await page.locator("footer").textContent()) === seedBeforeReplay)
+if ((await takeSeed()) === seedBeforeReplay)
   fail("write reused the previous seed — every write should reshuffle");
 
 // Ink settings restyle the finished line without a rewrite: pick blue and
@@ -208,7 +213,7 @@ await waitForIdle();
 await expectDot(true, "after switching back to calligrapher");
 
 // Seed locking: typing a seed closes the chain-link lock, and a write
-// keeps the seed (the footer carries the take's seed).
+// keeps the seed (the options readout carries the take's seed).
 await page.getByLabel("seed", { exact: true }).fill("12345");
 const lockPressed = await page
   .getByRole("button", { name: "lock seed" })
@@ -216,8 +221,7 @@ const lockPressed = await page
 if (lockPressed !== "true") fail("typing a seed did not lock it");
 await writeButton.click();
 await page.waitForTimeout(2_500);
-if (!(await page.locator("footer").textContent()).includes("seed 12345"))
-  fail("pinned write did not keep the seed");
+if ((await takeSeed()) !== "12345") fail("pinned write did not keep the seed");
 await expectDot(false, "after the pinned write");
 
 // Share copies a #/write link carrying the whole take, seed included.
@@ -265,7 +269,7 @@ await page.getByRole("link", { name: "studio", exact: true }).first().click();
 await page
   .getByRole("heading", { name: "Build with Longhand" })
   .waitFor({ state: "detached", timeout: 5_000 });
-if (!(await page.locator("footer").textContent()).includes("seed 12345"))
+if ((await takeSeed()) !== "12345")
   fail("returning from the build page lost the pinned take");
 if ((await inkPixels()) < inkBeforeGuide * 0.9)
   fail("returning from the build page lost the canvas ink");
@@ -282,7 +286,7 @@ const expectSharedTake = async (label) => {
   await page.waitForTimeout(10_000);
   if ((await textBox.inputValue()) !== "a line of ink, thinking as it goes")
     fail(`${label}: share link did not restore the text`);
-  if (!(await page.locator("footer").textContent()).includes("seed 12345"))
+  if ((await takeSeed()) !== "12345")
     fail(`${label}: share link did not replay the pinned seed`);
   if ((await inkPixels()) < 1000) fail(`${label}: share link did not write the line`);
   if (page.url().includes("#/write")) fail(`${label}: share link should clean its hash`);

@@ -20,7 +20,7 @@ export type ShareLegibility = (typeof LEGIBILITIES)[number];
 
 // Mirrors App.tsx's DEFAULT_THICKNESS / DEFAULT_SPEED and the slider ranges.
 const THICKNESS_RANGE = { min: 0.5, max: 1.5, fallback: 1 };
-const SPEED_RANGE = { min: 0.25, max: 4, fallback: 1.5 };
+const SPEED_RANGE = { min: 0.25, max: 4, fallback: 1 };
 
 /** A parsed share link. Null style/stroke mean "the engine's default";
  * null seed means the link didn't pin one (roll a fresh take); null

@@ -28,7 +28,7 @@ import {
   chipRightClass,
   chipSlotClass,
   Segmented,
-  ThemeToggle,
+  SiteFooter,
 } from "./controls.js";
 import ExportDialog from "./ExportDialog.js";
 import type { ExportStyle } from "./export.js";
@@ -88,8 +88,8 @@ function defaultInk(paper: string | null): string {
 // Thickness is a multiplier on the renderers' tuned ink width: 1x sits in
 // the middle of the slider (0.5–1.5), so default means "as tuned".
 const DEFAULT_THICKNESS = 1.0;
-// A brisk-but-watchable writing pace.
-const DEFAULT_SPEED = 1.5;
+// Authentic pen pace: 1x plays strokes back at the model's recorded timing.
+const DEFAULT_SPEED = 1;
 
 /** Ink weight per engine + stroke combination, multiplied into thickness.
  * Normalizes how heavy 1x looks across combinations — the reference ribbon
@@ -805,7 +805,7 @@ export default function App() {
         </div>
         {/* Below the wordmark row, so it can run the full width. */}
         <p className="mt-1 text-sm text-muted-foreground">
-          ai handwriting synthesis in your browser or directly on your device. export to
+          ai handwriting synthesis in your browser or native mobile apps. export to
           any still or animated format, or integrate it into your app with the sdk — all
           free.
         </p>
@@ -995,7 +995,7 @@ export default function App() {
           {/* The collapsed state's whole job: a one-line readout of the
               settings. Open, the full controls say the same thing, so the
               readout fades away on the panel's own 200ms clock. */}
-          <span className="min-w-0 flex-1 truncate text-left text-xs text-muted-foreground transition-opacity duration-200 group-data-panel-open:opacity-0">
+          <span className="settings-readout min-w-0 flex-1 truncate text-left text-xs text-muted-foreground transition-opacity duration-200 group-data-panel-open:opacity-0">
             {descriptor?.label ?? "loading…"} · {styleLabel} · {stroke} ·{" "}
             <span
               className="inline-block size-[11px] rounded-full border border-foreground/20 bg-foreground align-[-1.5px]"
@@ -1210,12 +1210,7 @@ export default function App() {
         </CollapsibleContent>
       </Collapsible>
 
-      <footer className="flex items-center gap-1 text-xs text-muted-foreground/80">
-        <span>
-          seed {seed} · no servers involved · <span className="italic">work in progress</span>
-        </span>
-        <ThemeToggle onApply={refit} />
-      </footer>
+      <SiteFooter page="studio" onThemeApply={refit} />
     </main>
   );
 }
