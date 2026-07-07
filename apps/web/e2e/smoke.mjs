@@ -1,6 +1,6 @@
 /**
  * Headless smoke test: verifies the boot defaults (calligrapher engine,
- * style 2, pen stroke, empty focused text line), types and writes with both
+ * style 2, ribbon stroke, empty focused text line), types and writes with both
  * engines and stroke types, replays, restyles, locks a seed, reads the code
  * dialog's snippets, opens the build page, replays a share link both live
  * and from a cold load, and checks ink actually lands on the canvas with
@@ -128,7 +128,7 @@ const selectEngine = async (label) => {
 const takeSeed = async () =>
   (await page.locator(".settings-readout").textContent()).match(/seed (\d+)/)?.[1];
 
-// Boot defaults: calligrapher engine, style 2, pen stroke.
+// Boot defaults: calligrapher engine, style 2, ribbon stroke.
 const calligrapherChecked = await page
   .getByRole("radio", { name: "calligrapher", exact: true })
   .getAttribute("aria-checked");
@@ -136,24 +136,24 @@ if (calligrapherChecked !== "true") fail("default model is not calligrapher");
 const bootStyle = await page.locator(".style-picker-trigger").getAttribute("aria-label");
 if (bootStyle !== "handwriting style: style 2")
   fail(`default style is "${bootStyle}", expected style 2`);
-const penChecked = await page
-  .getByRole("radio", { name: "pen", exact: true })
+const ribbonChecked = await page
+  .getByRole("radio", { name: "ribbon", exact: true })
   .getAttribute("aria-checked");
-if (penChecked !== "true") fail("default stroke is not pen");
+if (ribbonChecked !== "true") fail("default stroke is not ribbon");
 
 // Write with the boot defaults — Enter in the text line presses write.
 // Generation completes before the pen animates, so the wait covers a full
 // generate + partial replay.
 await textBox.press("Enter");
 await page.waitForTimeout(10_000);
-const calligrapherPenInk = await inkPixels();
-
-// Stroke type: flip the finished line to the ribbon look and back —
-// in-place repaints, no rewrite.
-await page.getByRole("radio", { name: "ribbon" }).click();
-await page.waitForTimeout(500);
 const calligrapherRibbonInk = await inkPixels();
+
+// Stroke type: flip the finished line to the pen look and back —
+// in-place repaints, no rewrite.
 await page.getByRole("radio", { name: "pen", exact: true }).click();
+await page.waitForTimeout(500);
+const calligrapherPenInk = await inkPixels();
+await page.getByRole("radio", { name: "ribbon", exact: true }).click();
 await page.waitForTimeout(500);
 // Stroke restyles the line in place, so it never trips the stale dot.
 await expectDot(false, "after a stroke flip");
@@ -166,8 +166,8 @@ const seedBeforeReplay = await takeSeed();
 await page.getByRole("button", { name: "play", exact: true }).click();
 await page.waitForTimeout(700);
 const replayInk = await inkPixels();
-if (replayInk <= 0 || replayInk >= calligrapherPenInk * 0.8)
-  fail(`replay did not restart the animation (${replayInk} vs ${calligrapherPenInk})`);
+if (replayInk <= 0 || replayInk >= calligrapherRibbonInk * 0.8)
+  fail(`replay did not restart the animation (${replayInk} vs ${calligrapherRibbonInk})`);
 if ((await takeSeed()) !== seedBeforeReplay)
   fail("replay changed the seed — it should reuse the same take");
 
@@ -277,8 +277,17 @@ await page
   .waitFor({ state: "detached", timeout: 5_000 });
 if ((await takeSeed()) !== "12345")
   fail("returning from the build page lost the pinned take");
-if ((await inkPixels()) < inkBeforeGuide * 0.9)
-  fail("returning from the build page lost the canvas ink");
+// The repaint after the studio remounts is async (ResizeObserver refit),
+// and the take may still be mid-animation, redrawn from scratch each
+// frame — a single instantaneous read races both and used to flake.
+// Poll: the ink only has to come back, not be there this very frame.
+let returnedInk = 0;
+for (let i = 0; i < 10 && returnedInk < inkBeforeGuide * 0.9; i++) {
+  returnedInk = await inkPixels();
+  if (returnedInk < inkBeforeGuide * 0.9) await page.waitForTimeout(300);
+}
+if (returnedInk < inkBeforeGuide * 0.9)
+  fail(`returning from the build page lost the canvas ink (${returnedInk} vs ${inkBeforeGuide})`);
 
 // The build page also deep-links (hash route on a cold load).
 await page.goto(`${baseUrl}/#/build`);

@@ -176,7 +176,9 @@ export default function App() {
   const speedRef = useRef(BOOT_TAKE?.speed ?? DEFAULT_SPEED);
   const rafRef = useRef(0);
   const alphabetRef = useRef<Set<string>>(new Set());
-  const rendererRef = useRef<RendererKind>("pen");
+  // Seeded with the boot engine's (calligrapher) default so the pre-ready
+  // UI never shows a stroke the activation is about to correct.
+  const rendererRef = useRef<RendererKind>("ribbon");
   const ribbonFactorRef = useRef(1);
   const inkWeightRef = useRef(INK_WEIGHT.calligrapher);
   // Paint-time copy of the ink settings, so the rAF loop sees changes
@@ -221,7 +223,7 @@ export default function App() {
   );
   const [thickness, setThickness] = useState(BOOT_TAKE?.thickness ?? DEFAULT_THICKNESS);
   const [speed, setSpeed] = useState(BOOT_TAKE?.speed ?? DEFAULT_SPEED);
-  const [stroke, setStroke] = useState<RendererKind>("pen");
+  const [stroke, setStroke] = useState<RendererKind>("ribbon");
   // What the line on the canvas was generated FROM, stamped when each write
   // is posted. Ink, paper, thickness, stroke, and speed restyle the finished
   // line in place, so they're not part of the stamp — but these five only
@@ -802,18 +804,6 @@ export default function App() {
           any still or animated format, or integrate it into your app with the sdk — all
           free.
         </p>
-        <p className="mt-0.5 text-xs text-muted-foreground/70">
-          based on{" "}
-          <a
-            className="underline underline-offset-2 hover:text-foreground"
-            href="https://arxiv.org/abs/1308.0850"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Generating Sequences with Recurrent Neural Networks
-          </a>{" "}
-          (Graves, 2013)
-        </p>
       </header>
 
       {/* The paper: you type on its first line and the handwriting appears
@@ -1203,22 +1193,60 @@ export default function App() {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* The "what is this for?" door, dressed like the options card so the
-          two read as one family of quiet panels under the paper. It leads
-          to the gallery of staged, prerendered scenes (#/uses). */}
-      <a
-        href="#/uses"
-        className="group flex items-center gap-3 rounded-2xl bg-[oklch(0.93_0.012_85)] px-4 py-3 text-sm shadow-sm transition-colors hover:bg-foreground/5 dark:bg-[oklch(0.235_0.012_70)]"
-      >
-        <span className="shrink-0 font-medium">what can you use this for?</span>
-        <span className="min-w-0 flex-1 truncate text-left text-xs text-muted-foreground">
-          hello moments · signed agreements · handwritten postscripts · notes in games
-        </span>
-        <ArrowRightIcon
-          className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
-          aria-hidden
-        />
-      </a>
+      {/* Two doors below the options: the gallery and the developer guide.
+          Deliberately NOT paper — the studio's cards are opaque and raised
+          by shadow, so these are the opposite: hairline-bordered tiles,
+          transparent to the desk's grain, picking up a card surface only
+          under the pointer (the chips' quiet-until-touched manner). They
+          read as wayfinding off the desk rather than more studio. */}
+      <div className="grid gap-5 sm:grid-cols-2">
+        {(
+          [
+            {
+              href: "#/uses",
+              title: "what it's for",
+              blurb:
+                "hello moments · signed agreements · handwritten postscripts · notes in games",
+            },
+            {
+              href: "#/build",
+              title: "build with it",
+              blurb:
+                "TypeScript, Swift, and Kotlin packages · weights included · no servers, no keys",
+            },
+          ] as const
+        ).map((door) => (
+          <a
+            key={door.href}
+            href={door.href}
+            className="group flex min-h-28 flex-col justify-between gap-3 rounded-2xl border border-foreground/10 p-5 transition hover:bg-card hover:shadow-xs dark:hover:bg-muted/40"
+          >
+            <span className="flex items-center justify-between gap-3">
+              <span className="font-heading font-medium">{door.title}</span>
+              <ArrowRightIcon
+                className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+                aria-hidden
+              />
+            </span>
+            <span className="text-xs text-muted-foreground">{door.blurb}</span>
+          </a>
+        ))}
+      </div>
+
+      {/* The lineage line, moved out of the header: fine print under the
+          two doors, a colophon rather than a claim the masthead makes. */}
+      <p className="-mt-2 text-xs text-muted-foreground/70">
+        based on{" "}
+        <a
+          className="underline underline-offset-2 hover:text-foreground"
+          href="https://arxiv.org/abs/1308.0850"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Generating Sequences with Recurrent Neural Networks
+        </a>{" "}
+        (Graves, 2013)
+      </p>
 
       <SiteFooter page="studio" onThemeApply={refit} />
     </main>

@@ -69,9 +69,9 @@ const SPECS: Record<EngineId, EngineSpec> = {
         descriptor: {
           id: "calligrapher",
           label: "calligrapher",
-          // The model was tuned for the ribbon look, but the app's default
-          // ink is the pen; ribbon stays one toggle away.
-          renderer: "pen",
+          // The model was tuned for the ribbon look, so that's what a
+          // fresh page shows; the pen stays one toggle away.
+          renderer: "ribbon",
           ribbonWidthFactor: 1,
           styles: [...EXPOSED_STYLES],
           alphabet: [...CALLIGRAPHER_ALPHABET],
