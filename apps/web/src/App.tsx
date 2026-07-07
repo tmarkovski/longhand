@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { lineBounds, offsetsToLine, transformLine } from "@longhand/ink-core";
 import { alignLine, penWidths, polishLine, ribbonPath, RIBBON_WIDTH } from "@longhand/ink-render";
 import {
+  ArrowRightIcon,
   ChevronDownIcon,
   CodeIcon,
+  CoffeeIcon,
   LinkIcon,
   PauseIcon,
   PenLineIcon,
@@ -27,6 +29,7 @@ import {
   chipClass,
   chipRightClass,
   chipSlotClass,
+  COFFEE_URL,
   Segmented,
   SiteFooter,
 } from "./controls.js";
@@ -795,13 +798,41 @@ export default function App() {
               in prose (the guide, this subtitle) the name stays a normal
               capitalized noun. */}
           <h1 className="font-heading text-2xl font-medium tracking-tight italic">longhand</h1>
-          <a
-            href="#/build"
-            className="flex shrink-0 items-center gap-1.5 rounded-full bg-card/80 px-3 py-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40"
-          >
-            <CodeIcon className="size-3.5" aria-hidden />
-            build with it
-          </a>
+          <div className="flex shrink-0 items-center gap-2">
+            <a
+              href="#/build"
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-card/80 px-3 py-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40"
+            >
+              <CodeIcon className="size-3.5" aria-hidden />
+              build with it
+            </a>
+            {/* The support link: a quiet icon in the build pill's clothes,
+                speaking the strip chips' unroll language — but IN flow,
+                like the play chip, not overlay-anchored: unrolling over
+                the build pill smeared the two labels together, so instead
+                the label pushes the pill leftward and rides it back. Icon
+                LEFT of the label, matching the build pill beside it; the
+                icon rides the expanding edge leftward, which is safe here
+                (unlike the strip) because the pill grows around the
+                pointer — the cursor never leaves the link. Sized to the
+                pill's 28px height, not the strip chips' 32. */}
+            <a
+              className="chip flex shrink-0 items-center rounded-full bg-card/80 p-1.5 text-xs text-muted-foreground shadow-xs transition-colors hover:text-foreground dark:bg-background/40 dark:hover:bg-[oklch(0.32_0.012_70)]"
+              href={COFFEE_URL}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="buy me a coffee"
+              title="buy me a coffee"
+            >
+              <CoffeeIcon className="size-4 shrink-0" aria-hidden />
+              {/* Padding inside the label so it unrolls with the text: the
+                  chip's p-1.5 is icon-circle padding, too tight against the
+                  pill's rounded cap; 6 more matches the build pill's px-3. */}
+              <ChipLabel>
+                <span className="pr-1.5">buy me a coffee</span>
+              </ChipLabel>
+            </a>
+          </div>
         </div>
         {/* Below the wordmark row, so it can run the full width. */}
         <p className="mt-1 text-sm text-muted-foreground">
@@ -1209,6 +1240,23 @@ export default function App() {
           </div>
         </CollapsibleContent>
       </Collapsible>
+
+      {/* The "what is this for?" door, dressed like the options card so the
+          two read as one family of quiet panels under the paper. It leads
+          to the gallery of staged, prerendered scenes (#/uses). */}
+      <a
+        href="#/uses"
+        className="group flex items-center gap-3 rounded-2xl bg-[oklch(0.93_0.012_85)] px-4 py-3 text-sm shadow-sm transition-colors hover:bg-foreground/5 dark:bg-[oklch(0.235_0.012_70)]"
+      >
+        <span className="shrink-0 font-medium">what can you use this for?</span>
+        <span className="min-w-0 flex-1 truncate text-left text-xs text-muted-foreground">
+          hello moments · signed agreements · handwritten postscripts · notes in games
+        </span>
+        <ArrowRightIcon
+          className="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5"
+          aria-hidden
+        />
+      </a>
 
       <SiteFooter page="studio" onThemeApply={refit} />
     </main>

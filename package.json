@@ -24,6 +24,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "gen:goldens": "uv run --directory tools python make_goldens.py && pnpm --filter @longhand/ink-calligrapher exec tsx scripts/export_swift_goldens.ts && pnpm --filter @longhand/ink-render exec tsx scripts/export_swift_goldens.ts",
-    "gen:weights": "uv run --directory tools python export_weights.py"
+    "gen:weights": "uv run --directory tools python export_weights.py",
+    "gen:showcase": "pnpm --filter @longhand/web exec tsx scripts/gen-showcase.ts"
   }
 }

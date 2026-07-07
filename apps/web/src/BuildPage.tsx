@@ -309,6 +309,18 @@ export default function BuildPage() {
         </div>
       </Section>
 
+      <Section title="need ideas?">
+        <p className="text-sm text-muted-foreground">
+          The{" "}
+          <a className="underline underline-offset-2 hover:text-foreground" href="#/uses">
+            use-case gallery
+          </a>{" "}
+          stages the classics as live scenes: the onboarding hello, the signed agreement, the
+          handwritten postscript, and more. Every scene links back to the studio and to the
+          exact code that draws it.
+        </p>
+      </Section>
+
       <Section title="just want the file?">
         <p className="text-sm text-muted-foreground">
           No code required: the{" "}

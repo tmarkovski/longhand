@@ -34,8 +34,9 @@ export const chipRightClass = cn(chipClass, "chip-reverse absolute top-0 right-0
 export function ChipLabel({ children }: { children: ReactNode }) {
   return (
     <span className="chip-label" aria-hidden>
-      {/* Inner span so the grid column can clip it while it unrolls. */}
-      <span>{children}</span>
+      {/* Inner span so the grid column can clip it while it unrolls;
+          nowrap so multi-word labels clip instead of stacking. */}
+      <span className="whitespace-nowrap">{children}</span>
     </span>
   );
 }
@@ -121,8 +122,7 @@ export function Segmented<T extends string>({
   );
 }
 
-// TODO: no account exists at this handle yet — point it at the real page.
-const COFFEE_URL = "https://buymeacoffee.com/tmarkovski";
+export const COFFEE_URL = "https://buymeacoffee.com/codewithtm";
 
 function FooterLink({ href, children }: { href: string; children: ReactNode }) {
   const external = href.startsWith("http");
@@ -147,7 +147,14 @@ function GithubMark({ className }: { className?: string }) {
   );
 }
 
-/** The one-line footer both pages share: page links on the left, an icon
+/** The pages, as the footer names them; each page links to the others. */
+const PAGE_LINKS = [
+  { page: "studio", href: "#/", label: "studio" },
+  { page: "uses", href: "#/uses", label: "what it's for" },
+  { page: "build", href: "#/build", label: "build with it" },
+] as const;
+
+/** The one-line footer all pages share: page links on the left, an icon
  * cluster — the repo and the theme toggle — on the right. `lead` is a
  * page's own closing words, ahead of the links (the guide keeps its
  * weights note there). */
@@ -156,7 +163,7 @@ export function SiteFooter({
   lead,
   onThemeApply,
 }: {
-  page: "studio" | "build";
+  page: (typeof PAGE_LINKS)[number]["page"];
   lead?: ReactNode;
   onThemeApply?: () => void;
 }) {
@@ -164,12 +171,12 @@ export function SiteFooter({
     <footer className="flex items-center justify-between gap-3 text-xs text-muted-foreground/80">
       <span>
         {lead}
-        {page === "studio" ? (
-          <FooterLink href="#/build">build with it</FooterLink>
-        ) : (
-          <FooterLink href="#/">studio</FooterLink>
-        )}
-        {" · "}
+        {PAGE_LINKS.filter((link) => link.page !== page).map((link) => (
+          <span key={link.page}>
+            <FooterLink href={link.href}>{link.label}</FooterLink>
+            {" · "}
+          </span>
+        ))}
         <FooterLink href={COFFEE_URL}>buy me a coffee</FooterLink>
       </span>
       <span className="flex shrink-0 items-center gap-0.5">

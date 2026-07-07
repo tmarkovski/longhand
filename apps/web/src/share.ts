@@ -40,9 +40,9 @@ export interface SharedTake {
 
 const fmt = (value: number) => String(Number(value.toFixed(2)));
 
-/** The take → a link. Built from the same params object the code panel
- * uses, so share and snippet can never disagree about what a take is. */
-export function buildShareUrl(params: SnippetParams): string {
+/** The take → the hash half of a share link: an in-app href (the
+ * use-case gallery's "remix in studio") navigates by hash alone. */
+export function shareHash(params: SnippetParams): string {
   const query = new URLSearchParams();
   query.set("text", params.text);
   query.set("model", ENGINE_NAMES[params.engine]);
@@ -54,7 +54,14 @@ export function buildShareUrl(params: SnippetParams): string {
   query.set("thickness", fmt(params.thickness));
   query.set("speed", fmt(params.speed));
   query.set("seed", String(params.seed));
-  return `${location.origin}${location.pathname}#/write?${query}`;
+  return `#/write?${query}`;
+}
+
+/** The take → a full link. Built from the same params object the code
+ * panel uses, so share and snippet can never disagree about what a take
+ * is. */
+export function buildShareUrl(params: SnippetParams): string {
+  return `${location.origin}${location.pathname}${shareHash(params)}`;
 }
 
 const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
