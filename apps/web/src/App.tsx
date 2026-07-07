@@ -194,17 +194,19 @@ const PAPER_COLORS: ReadonlyArray<{ name: string; value: string | null }> = [
  * both models and both upper legibilities so the chips show the breadth.
  * Each chip previews its own mix (its text in its ink on its paper); every
  * ink-on-paper pairing clears AA (4.5:1) and every character is in both
- * engines' alphabets, so a tap never drops anything. */
+ * engines' alphabets, so a tap never drops anything. A null paper means
+ * the default card — the chip shows the card surface and its text adapts
+ * per theme through legibleOn, the same way the typed line does. */
 const PRESETS: ReadonlyArray<{
   text: string;
   ink: string;
-  paper: string;
+  paper: string | null;
   engine: EngineId;
   stroke: RendererKind;
   legibility: Legibility;
 }> = [
-  // blue on sky
-  { text: "hello there", ink: "#1e4fd8", paper: "#e9f1f7",
+  // blue on the default card
+  { text: "hello there", ink: "#1e4fd8", paper: null,
     engine: "calligrapher", stroke: "ribbon", legibility: "normal" },
   // sepia on parchment
   { text: "thank you so much", ink: "#7a4a21", paper: "#f0e6cf",
@@ -1092,8 +1094,22 @@ export default function App() {
                     disabled={busy}
                     onClick={() => tryPreset(preset)}
                     title={`write "${preset.text}" in this mix`}
-                    className="cursor-pointer rounded-full border border-black/10 px-3 py-1.5 text-xs shadow-xs transition hover:shadow-sm disabled:opacity-50"
-                    style={{ background: preset.paper, color: preset.ink }}
+                    className={cn(
+                      "cursor-pointer rounded-full border border-black/10 px-3 py-1.5 text-xs shadow-xs transition hover:shadow-sm disabled:opacity-50",
+                      // No paper: the chip is the card itself, so the ink
+                      // adapts per theme (true blue can't read on the night
+                      // card) — same legibleOn treatment as the typed line.
+                      !preset.paper &&
+                        "bg-card [color:var(--chip-light)] dark:border-white/10 dark:[color:var(--chip-dark)]",
+                    )}
+                    style={
+                      preset.paper
+                        ? { background: preset.paper, color: preset.ink }
+                        : ({
+                            "--chip-light": legibleOn(preset.ink, CARD_LIGHT),
+                            "--chip-dark": legibleOn(preset.ink, CARD_DARK),
+                          } as CSSProperties)
+                    }
                   >
                     {preset.text}
                   </button>
