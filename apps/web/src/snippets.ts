@@ -17,12 +17,15 @@ export const REPO_URL = "https://github.com/tmarkovski/longhand";
 export const NPM_PACKAGE = "longhand";
 export const NPM_INSTALL = `npm install ${REPO_URL.replace("https://github.com/", "github:")}`;
 export const SWIFT_DEPENDENCY = `.package(url: "${REPO_URL}", branch: "main")`;
+/** JitPack group: the GitHub URL as Maven coordinates. */
+export const KOTLIN_GROUP = "com.github.tmarkovski.longhand";
 
-export type Platform = "web" | "swift";
+export type Platform = "web" | "swift" | "kotlin";
 
 export const PLATFORMS: ReadonlyArray<{ value: Platform; label: string }> = [
   { value: "web", label: "web · TypeScript" },
   { value: "swift", label: "Swift" },
+  { value: "kotlin", label: "Android · Kotlin" },
 ];
 
 export interface SnippetParams {
@@ -88,6 +91,12 @@ const WEIGHTS_SIZE: Record<EngineId, string> = { graves: "3.6 MB", calligrapher:
 
 /** Swift string literals share JSON's escapes for quote/backslash/controls. */
 const quote = (text: string) => JSON.stringify(text);
+
+/** Kotlin shares JSON's escapes too but adds string templates: escape `$`. */
+const kquote = (text: string) => JSON.stringify(text).replace(/\$/g, "\\$");
+
+/** Kotlin has no implicit widening: Double parameters need Double literals. */
+const kdouble = (value: string) => (value.includes(".") ? value : `${value}.0`);
 
 function styleLinesTs(params: SnippetParams): string[] {
   if (params.style !== null) return [`  style: ${params.style},`];
@@ -209,6 +218,79 @@ export function swiftSnippet(params: SnippetParams): string {
   return lines.join("\n");
 }
 
+export function kotlinSnippet(params: SnippetParams): string {
+  const { penBasePerScale, ribbonWidth, msPerStep } = renderNumbers(params);
+  const ribbon = params.renderer === "ribbon";
+  const model =
+    params.engine === "graves"
+      ? {
+          className: "GravesModel",
+          module: "graves",
+          parse: "parseModelAssets",
+          weights: "bundledGravesWeights",
+        }
+      : {
+          className: "CalligrapherModel",
+          module: "calligrapher",
+          parse: "parseCalligrapherWeights",
+          weights: "bundledCalligrapherWeights",
+        };
+
+  const styleLine =
+    params.style !== null
+      ? [`    style = ${params.style},`]
+      : params.engine === "graves"
+        ? ["    // style omitted: freehand (no style priming)"]
+        : ["    // style omitted: a seed-picked style, like the studio's random"];
+
+  const lines = [
+    `// build.gradle.kts: repositories { maven("https://jitpack.io") } and`,
+    `// implementation("${KOTLIN_GROUP}:ink-${model.module}:main-SNAPSHOT") // + :ink-render`,
+    `import com.trylonghand.ink.${model.module}.${model.className}`,
+    `import com.trylonghand.ink.${model.module}.${model.parse}`,
+    `import com.trylonghand.ink.${model.module}.${model.weights}`,
+    "import com.trylonghand.ink.core.lineBounds",
+    "import com.trylonghand.ink.core.offsetsToLine",
+    "import com.trylonghand.ink.render.*",
+    "",
+    `// The weights ship inside the module's JAR (${WEIGHTS_SIZE[params.engine]}); load once.`,
+    `val model = ${model.className}(${model.parse}(${model.weights}()))`,
+    "",
+    "// These exact settings replay the studio take, stroke for stroke.",
+    "val offsets = model.write(",
+    `    ${kquote(params.text)},`,
+    `    bias = ${kdouble(String(params.bias))}, // legibility: ${params.legibility}`,
+    ...styleLine,
+    `    seed = ${params.seed}u,`,
+    ")",
+    "",
+    ribbon
+      ? "// Ribbon look: level the baseline, keep the speed-shaped widths."
+      : "// Pen look: smooth the jitter, level the baseline.",
+    `val line = ${ribbon ? "alignLine" : "polishLine"}(offsetsToLine(offsets))`,
+    "val bounds = lineBounds(line)!!",
+    "val scale = 200 / maxOf(bounds.height, 1.0)",
+    "",
+    "// Or lineToSvg(line, LineSvgOptions(...)) for a still image.",
+    "val svg = lineToAnimatedSvg(line, AnimatedSvgOptions(",
+    "    line = LineSvgOptions(",
+    `        renderer = InkRenderer.${params.renderer},`,
+    "        scale = scale,",
+    "        padding = 40.0,",
+    ...(params.ink ? [`        ink = ${kquote(params.ink)},`] : []),
+    ...(params.paper ? [`        background = ${kquote(params.paper)},`] : []),
+    ribbon
+      ? `        ribbonWidth = ${kdouble(ribbonWidth)}, // thickness ${round(params.thickness, 2)}x`
+      : `        pen = PenWidthOptions(base = ${kdouble(penBasePerScale)} * scale), // thickness ${round(params.thickness, 2)}x`,
+    "    ),",
+    `    msPerStep = ${kdouble(msPerStep)}, // speed ${round(params.speed, 2)}x`,
+    "))",
+  ];
+  return lines.join("\n");
+}
+
 export function snippetFor(platform: Platform, params: SnippetParams): string {
-  return platform === "web" ? tsSnippet(params) : swiftSnippet(params);
+  if (platform === "web") return tsSnippet(params);
+  if (platform === "swift") return swiftSnippet(params);
+  return kotlinSnippet(params);
 }

@@ -31,7 +31,9 @@ exporters turn them into animated SVG, GIF, video, and raw stroke JSON.
 
 `ink-swift` brings all of it to Apple platforms as a SwiftPM package. It is
 a port of our own TypeScript packages rather than of the upstream repos, and
-it is held to the same golden fixtures.
+it is held to the same golden fixtures. `ink-kotlin` does the same for
+Android and the JVM: four pure-Kotlin modules (no Android SDK required)
+plus a Jetpack Compose example app, held to the same fixtures again.
 
 ## Use it in your app
 
@@ -57,6 +59,19 @@ import weightsUrl from "longhand/calligrapher.bin?url"; // Vite-style bundlers
 // targets bundle their weights, so bundledGravesWeights() etc. just work.
 ```
 
+```kotlin
+// build.gradle.kts — JitPack builds the repo from the GitHub URL
+// (settings.gradle.kts lives at the repo root for exactly this).
+repositories { maven("https://jitpack.io") }
+dependencies {
+    // modules: ink-core, ink-graves, ink-calligrapher, ink-render — the
+    // engine JARs bundle their weights, so bundledGravesWeights() etc.
+    // just work. Pin a commit or tag instead of main-SNAPSHOT to stay put.
+    implementation("com.github.tmarkovski.longhand:ink-calligrapher:main-SNAPSHOT")
+    implementation("com.github.tmarkovski.longhand:ink-render:main-SNAPSHOT")
+}
+```
+
 Cross-package imports inside `packages/*/src` are relative (not
 `@longhand/*`) so the single git-installed package resolves on its own;
 a test guards that invariant.
@@ -64,6 +79,7 @@ a test guards that invariant.
 ```
 longhand/
 ├── Package.swift               root SwiftPM manifest, so the repo is a git dependency
+├── settings.gradle.kts         root Gradle settings: the same trick for Kotlin/Android
 ├── graves-handwriting-mlx/     submodule: MLX reference, golden-vector oracle
 ├── vendor/calligrapher-ai/     calligrapher.ai snapshot: porting reference, parity oracle
 ├── tools/                      Python (uv): weight export, golden vectors
@@ -72,7 +88,8 @@ longhand/
 │   ├── ink-graves/             Graves engine (TS port of the MLX reference)
 │   ├── ink-calligrapher/       calligrapher.ai engine (TS port)
 │   ├── ink-render/             pen and ribbon looks, animated SVG export
-│   └── ink-swift/              Swift port of the four packages above + SwiftUI example
+│   ├── ink-swift/              Swift port of the four packages above + SwiftUI example
+│   └── ink-kotlin/             Kotlin/JVM port of the same four + Compose example app
 ├── apps/
 │   └── web/                    the site (Vite + React)
 └── docs/                       product brief and build plan
@@ -101,6 +118,13 @@ pnpm gen:weights       # f32 reference fixture for the Graves golden tests, one 
 pnpm test              # TypeScript packages
 pnpm --filter @longhand/web dev
 ```
+
+For the Kotlin port, run `./gradlew test` at the repo root (after
+`gen:goldens` and `gen:weights`); the JVM runs the engines at full speed, so
+there is no debug/release split to think about. The Android example app is
+its own Gradle build at `packages/ink-kotlin/example` (open that directory
+in Android Studio, or `./gradlew :app:assembleDebug` inside it) and needs
+only a stock Android SDK — the libraries themselves stay pure JVM.
 
 For the Swift port, run `swift test -c release` at the repo root (after
 `gen:goldens` and `gen:weights`). Release is the fast loop: the manifest

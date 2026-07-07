@@ -1,0 +1,9 @@
+# JitPack builds the repo straight from its GitHub URL and serves the
+# library modules as com.github.tmarkovski.longhand:<module>:<tag>.
+# Tests are skipped here on purpose: the golden fixtures they need are
+# gitignored (regenerated locally with pnpm gen:goldens), exactly like the
+# Swift package, whose remote consumers never run its test targets either.
+jdk:
+  - openjdk21
+install:
+  - ./gradlew publishToMavenLocal -x test

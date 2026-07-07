@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { ArrowLeftIcon } from "lucide-react";
 import CodeBlock from "./CodeBlock.js";
-import { Segmented, ThemeToggle } from "./controls.js";
+import { Segmented, SiteFooter } from "./controls.js";
 import type { EngineId } from "./protocol.js";
 import {
+  KOTLIN_GROUP,
   NPM_INSTALL,
   PLATFORMS,
-  REPO_URL,
   SWIFT_DEPENDENCY,
   snippetFor,
   type Platform,
@@ -30,7 +30,7 @@ const QUICKSTART: SnippetParams = {
   seed: 42,
   renderer: "pen",
   thickness: 1,
-  speed: 1.5,
+  speed: 1,
   ink: null,
   paper: null,
 };
@@ -52,6 +52,21 @@ const SWIFT_PACKAGE_SNIPPET = [
   "        ]",
   "    ),",
   "]",
+].join("\n");
+
+const KOTLIN_GRADLE_SNIPPET = [
+  "// build.gradle.kts — JitPack builds the modules straight from the repo;",
+  "// pin a tag or commit instead of main-SNAPSHOT to stay put.",
+  "repositories {",
+  "    maven(\"https://jitpack.io\")",
+  "}",
+  "dependencies {",
+  "    // Pick the engines you ship; each bundles its own weights.",
+  `    implementation("${KOTLIN_GROUP}:ink-calligrapher:main-SNAPSHOT") // 2.6 MB`,
+  `    implementation("${KOTLIN_GROUP}:ink-graves:main-SNAPSHOT") // 3.6 MB, optional`,
+  `    implementation("${KOTLIN_GROUP}:ink-core:main-SNAPSHOT")`,
+  `    implementation("${KOTLIN_GROUP}:ink-render:main-SNAPSHOT")`,
+  "}",
 ].join("\n");
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
@@ -127,7 +142,7 @@ const PARAMETERS: Array<{ knob: string; inCode: string; what: string }> = [
   {
     knob: "speed",
     inCode: "msPerStep",
-    what: "animation pace: milliseconds per model timestep (8 is authentic pen speed; the studio default 1.5x is 5.33)",
+    what: "animation pace: milliseconds per model timestep (8 is authentic pen speed and the studio default 1x)",
   },
 ];
 
@@ -226,7 +241,7 @@ export default function BuildPage() {
               including chat apps and READMEs.
             </p>
           </>
-        ) : (
+        ) : platform === "swift" ? (
           <>
             <p className="text-sm text-muted-foreground">
               Add the repo as a SwiftPM dependency (macOS 13+, iOS 16+). Each engine product
@@ -242,6 +257,23 @@ export default function BuildPage() {
               <code className="text-xs">packages/ink-swift/Example</code> in the repo.
             </p>
           </>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Pure-JVM Kotlin modules (minSdk 26, and they run on desktop JVMs too), served by
+              JitPack straight from the repo. Each engine JAR bundles its weights as a
+              resource, so there is nothing to download or copy:
+            </p>
+            <CodeBlock code={KOTLIN_GRADLE_SNIPPET} />
+            <CodeBlock code={quickstart} />
+            <p className="text-sm text-muted-foreground">
+              Generation is CPU-bound (a second or two per line) — run it off the main thread,
+              like a <code className="text-xs">Dispatchers.Default</code> coroutine. For a full
+              Jetpack Compose canvas that replays strokes at writing pace — the native
+              equivalent of the studio — see{" "}
+              <code className="text-xs">packages/ink-kotlin/example</code> in the repo.
+            </p>
+          </>
         )}
       </Section>
 
@@ -252,8 +284,8 @@ export default function BuildPage() {
             the studio
           </a>
           's <span className="font-medium">use in your app</span> panel, and copy code that
-          reproduces it stroke for stroke — the TypeScript and Swift engines are parity-locked
-          to the float, so a pinned seed is a portable take.
+          reproduces it stroke for stroke — the TypeScript, Swift, and Kotlin engines are
+          parity-locked to the float, so a pinned seed is a portable take.
         </p>
         <div className="overflow-x-auto rounded-2xl bg-[oklch(0.93_0.012_85)] shadow-sm dark:bg-[oklch(0.235_0.012_70)]">
           <table className="w-full min-w-[560px] border-collapse text-sm">
@@ -288,16 +320,15 @@ export default function BuildPage() {
         </p>
       </Section>
 
-      <footer className="flex items-center gap-1 text-xs text-muted-foreground/80">
-        <span>
-          <a className="underline underline-offset-2 hover:text-foreground" href={REPO_URL}>
-            source on GitHub
-          </a>{" "}
-          · the model weights descend from research checkpoints (unlicensed); a clean training
-          run is planned · <span className="italic">work in progress</span>
-        </span>
-        <ThemeToggle />
-      </footer>
+      <SiteFooter
+        page="build"
+        lead={
+          <>
+            the model weights descend from research checkpoints (unlicensed); a clean
+            training run is planned ·{" "}
+          </>
+        }
+      />
     </main>
   );
 }

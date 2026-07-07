@@ -1,6 +1,11 @@
 node_modules/
 dist/
 .build/
+.gradle/
+build/
+local.properties
+.kotlin/
+.idea/
 .swiftpm/
 xcuserdata/
 coverage/
