@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>longhand</title>
+    <!-- GitHub Pages serves this for any path that isn't a file. The
+         routes are hash fragments, so someone typing /uses or /build as
+         a bare path lands here; send them to the hash route instead. -->
+    <script>
+      location.replace("/#" + location.pathname + location.search);
+    </script>
+    <style>
+      body {
+        margin: 0;
+        display: grid;
+        place-items: center;
+        min-height: 100dvh;
+        background: #f8f6f0;
+        color: #1c1c28;
+        font-family: system-ui, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #100d09; color: #ececf1; }
+      }
+      a { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <noscript>
+      <p>nothing at this address · <a href="/">back to the studio</a></p>
+    </noscript>
+  </body>
+</html>

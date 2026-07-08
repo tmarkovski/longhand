@@ -3,11 +3,40 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>longhand</title>
+    <title>longhand · neural handwriting for web, iOS, and Android</title>
     <meta name="description" content="Neural handwriting synthesis in the browser. Type a line, watch it written in ink, export it as SVG, PNG, GIF, or MP4, or generate the same strokes in your own app." />
+    <!-- The site lives at one URL; the routes are hash fragments of it. -->
+    <link rel="canonical" href="https://trylonghand.com/" />
+    <!-- Social share card. The image is prerendered by scripts/gen-og.ts
+         (`pnpm gen:og`); scrapers need the absolute URL. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="longhand" />
+    <meta property="og:title" content="longhand" />
+    <meta property="og:description" content="Neural handwriting synthesis in the browser. Type a line, watch it written in ink, export it as SVG, PNG, GIF, or MP4, or generate the same strokes in your own app." />
+    <meta property="og:url" content="https://trylonghand.com/" />
+    <meta property="og:image" content="https://trylonghand.com/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="longhand, handwritten in red ink on paper: neural handwriting synthesis for web, iOS, and Android" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="longhand" />
+    <meta name="twitter:description" content="Neural handwriting synthesis in the browser. Type a line, watch it written in ink, export it as SVG, PNG, GIF, or MP4, or generate the same strokes in your own app." />
+    <meta name="twitter:image" content="https://trylonghand.com/og.png" />
     <!-- Browser chrome (mobile address bar) tinted to the paper theme. -->
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8f6f0" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#100d09" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Longhand",
+        "url": "https://trylonghand.com/",
+        "description": "Neural handwriting synthesis in the browser. Type a line, watch it written in ink, export it as SVG, PNG, GIF, or MP4, or generate the same strokes in your own app with the TypeScript, Swift, and Kotlin packages.",
+        "applicationCategory": "DesignApplication",
+        "operatingSystem": "Any",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      }
+    </script>
     <link
       rel="icon"
       href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✍️</text></svg>"

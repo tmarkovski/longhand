@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+# The model weights are multi-megabyte binaries; nothing to index there.
+Disallow: /model/
+
+Sitemap: https://trylonghand.com/sitemap.xml
