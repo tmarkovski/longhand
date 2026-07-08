@@ -212,7 +212,6 @@ export default function BuildPage() {
             value={engine}
             onChange={setEngine}
           />
-          <span className="text-xs text-muted-foreground">more languages on the way</span>
         </div>
 
         {platform === "web" ? (

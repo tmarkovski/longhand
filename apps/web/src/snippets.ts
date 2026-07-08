@@ -24,9 +24,9 @@ export const KOTLIN_GROUP = "com.github.tmarkovski.longhand";
 export type Platform = "web" | "swift" | "kotlin";
 
 export const PLATFORMS: ReadonlyArray<{ value: Platform; label: string }> = [
-  { value: "web", label: "web · TypeScript" },
+  { value: "web", label: "TypeScript" },
   { value: "swift", label: "Swift" },
-  { value: "kotlin", label: "Android · Kotlin" },
+  { value: "kotlin", label: "Kotlin" },
 ];
 
 /** What the highlighter should read each platform's snippet as. */
