@@ -37,7 +37,7 @@ export const SHOWCASE: ReadonlyArray<ShowcaseItem> = [
     id: "hello",
     title: "the hello",
     caption:
-      "the brand moment: an onboarding screen that writes its greeting instead of fading it in. one word, drawn slowly, is a whole first impression.",
+      "an onboarding screen that writes its greeting instead of fading it in: one word at half speed, light ink on a dark screen.",
     take: take({
       engine: "calligrapher",
       text: "hello",
@@ -55,7 +55,7 @@ export const SHOWCASE: ReadonlyArray<ShowcaseItem> = [
     id: "signature",
     title: "the signature",
     caption:
-      "terms accepted, and the name signs itself onto the line. the typed name is the legal act; the ink is the ceremony your users feel.",
+      "a name drawn onto the signature line after the terms are accepted. the typed name is the legal act; the ink is presentation on top of it.",
     take: take({
       engine: "graves",
       text: "Jordan Ellis",
@@ -73,7 +73,7 @@ export const SHOWCASE: ReadonlyArray<ShowcaseItem> = [
     id: "postscript",
     title: "the handwritten p.s.",
     caption:
-      "a typed email that ends in ink. it runs client-side with no server, so every recipient can get their own line in the same hand for free.",
+      "a typed email that ends in a handwritten line. generation runs client-side, so each recipient can get a personalized line without a server.",
     take: take({
       engine: "graves",
       text: "P.S. you're going to love this",
@@ -89,9 +89,9 @@ export const SHOWCASE: ReadonlyArray<ShowcaseItem> = [
   },
   {
     id: "greeting",
-    title: "the card that writes itself",
+    title: "the greeting card",
     caption:
-      "a birthday wish drawn at pen speed, exported as GIF or MP4, dropped in the group chat. the studio's export button does this today.",
+      "a birthday message drawn at pen speed, exported as GIF or MP4 for a chat thread. the studio's export dialog produces these files directly.",
     take: take({
       engine: "calligrapher",
       text: "happy birthday, june!",
@@ -125,9 +125,9 @@ export const SHOWCASE: ReadonlyArray<ShowcaseItem> = [
   },
   {
     id: "empty",
-    title: "the living empty state",
+    title: "the empty state",
     caption:
-      "instead of a spinner or a gray placeholder, the app writes what it's thinking. this one inherits the page's ink, so it follows your theme.",
+      "an empty state that writes its message instead of showing a placeholder. this take sets no ink color, so it inherits the page theme.",
     take: take({
       engine: "calligrapher",
       text: "nothing here yet",

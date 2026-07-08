@@ -968,9 +968,9 @@ export default function App() {
         <SiteHeader page="studio" />
         {/* Below the wordmark row, so it can run the full width. */}
         <p className="mt-1 text-sm text-muted-foreground">
-          ai handwriting synthesis in your browser or native mobile apps. export to
-          any still or animated format, or integrate it into your app with the sdk — all
-          free.
+          a neural network writes your text in ink, entirely in your browser. export the
+          result as SVG, PNG, GIF, or MP4, or generate the same strokes in your own app
+          with the TypeScript, Swift, and Kotlin packages.
         </p>
       </header>
 

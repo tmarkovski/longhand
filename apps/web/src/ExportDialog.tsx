@@ -222,7 +222,7 @@ export default function ExportDialog({ text, getOffsets, getStyle }: ExportDialo
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>export</DialogTitle>
-          <DialogDescription>save this take as a file — all made in your browser</DialogDescription>
+          <DialogDescription>save this take as a file, rendered in your browser</DialogDescription>
         </DialogHeader>
         <div role="radiogroup" aria-label="export format" className="flex flex-col gap-3">
           {group("still", STILL)}

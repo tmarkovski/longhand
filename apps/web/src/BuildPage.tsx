@@ -55,7 +55,7 @@ const SWIFT_PACKAGE_SNIPPET = [
 ].join("\n");
 
 const KOTLIN_GRADLE_SNIPPET = [
-  "// build.gradle.kts — JitPack builds the modules straight from the repo;",
+  "// build.gradle.kts: JitPack builds the modules straight from the repo;",
   "// pin a tag or commit instead of main-SNAPSHOT to stay put.",
   "repositories {",
   "    maven(\"https://jitpack.io\")",
@@ -117,7 +117,7 @@ const PARAMETERS: Array<{ knob: string; inCode: string; what: string }> = [
   {
     knob: "style",
     inCode: "style",
-    what: "which hand it writes in — calligrapher has styles 0–79 (the studio curates 1–9), longhand 0–12 plus freehand (null)",
+    what: "which hand it writes in: calligrapher has styles 0–79 (the studio curates 1–9), longhand 0–12 plus freehand (null)",
   },
   {
     knob: "legibility",
@@ -132,7 +132,7 @@ const PARAMETERS: Array<{ knob: string; inCode: string; what: string }> = [
   {
     knob: "stroke",
     inCode: 'renderer: "pen" | "ribbon"',
-    what: "the ink look — smoothed variable-width pen strokes, or speed-shaped filled ribbons",
+    what: "the ink look: smoothed variable-width pen strokes, or speed-shaped filled ribbons",
   },
   {
     knob: "thickness",
@@ -159,8 +159,8 @@ export default function BuildPage() {
         <div>
           <h1 className="font-heading text-2xl font-semibold tracking-tight">Build with Longhand</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            the studio's handwriting engines as packages for your own app — installed straight
-            from git, weights included, no servers and no keys
+            the studio's handwriting engines as packages for your own app: installed straight
+            from git, weights included, no server and no API keys
           </p>
         </div>
       </header>
@@ -168,8 +168,8 @@ export default function BuildPage() {
       <Section title="pick a model">
         <p className="text-sm text-muted-foreground">
           Two engines, one stroke format. Each is a separate import with its own weight file, so
-          an app ships only what it uses — on mobile, start with the calligrapher and add
-          longhand only if its looser hand earns the download.
+          an app ships only what it uses. At 2.6 and 3.6 MB both fit a mobile bundle; pick by
+          the hand you want, not the size.
         </p>
         <div className="flex flex-col gap-4 sm:flex-row">
           <ModelCard
@@ -180,17 +180,17 @@ export default function BuildPage() {
               "crisp, compact lines; tuned for the ribbon look",
               "lowercase-leaning latin, digits, punctuation",
             ]}
-            note="The default. Small enough to load on a phone without anyone noticing."
+            note="The default. Always writes in one of its trained styles; the neater, more regular hand."
           />
           <ModelCard
             name="longhand"
             size="3.6 MB"
             traits={[
               "13 primed styles plus an unprimed freehand mode",
-              "looser, more human wander; tuned for the pen look",
+              "looser, less regular strokes; tuned for the pen look",
               "the Graves (2013) handwriting RNN",
             ]}
-            note="The heavyweight. Worth it on desktop or when freehand variety matters."
+            note="The only one with freehand: unprimed sampling writes a different hand for every seed."
           />
         </div>
       </Section>
@@ -224,13 +224,13 @@ export default function BuildPage() {
             <CodeBlock language="shell" code={NPM_INSTALL} />
             <p className="text-sm text-muted-foreground">
               The packages ship as TypeScript source, so use a bundler that reads TS out of
-              node_modules — Vite and anything else esbuild-based does. The weights ship inside
+              node_modules; Vite and anything else esbuild-based does. The weights ship inside
               the package and become a hashed asset via the <code className="text-xs">?url</code>{" "}
               import; nothing to host separately.
             </p>
             <CodeBlock language={PLATFORM_LANG[platform]} code={quickstart} />
             <p className="text-sm text-muted-foreground">
-              Generation is CPU-bound (a second or two per line) — run it in a Web Worker like
+              Generation is CPU-bound (a second or two per line); run it in a Web Worker like
               the studio does so the page never janks. The animated SVG plays everywhere,
               including chat apps and READMEs.
             </p>
@@ -246,8 +246,8 @@ export default function BuildPage() {
             <CodeBlock language={PLATFORM_LANG[platform]} code={quickstart} />
             <p className="text-sm text-muted-foreground">
               The engines run comfortably past 30x real pen speed on Apple silicon. For a full
-              SwiftUI canvas that replays strokes at writing pace — the native equivalent of the
-              studio — see{" "}
+              SwiftUI canvas that replays strokes at writing pace (the native equivalent of the
+              studio), see{" "}
               <code className="text-xs">packages/ink-swift/Example</code> in the repo.
             </p>
           </>
@@ -261,10 +261,10 @@ export default function BuildPage() {
             <CodeBlock language="kotlin" code={KOTLIN_GRADLE_SNIPPET} />
             <CodeBlock language={PLATFORM_LANG[platform]} code={quickstart} />
             <p className="text-sm text-muted-foreground">
-              Generation is CPU-bound (a second or two per line) — run it off the main thread,
+              Generation is CPU-bound (a second or two per line); run it off the main thread,
               like a <code className="text-xs">Dispatchers.Default</code> coroutine. For a full
-              Jetpack Compose canvas that replays strokes at writing pace — the native
-              equivalent of the studio — see{" "}
+              Jetpack Compose canvas that replays strokes at writing pace (the native
+              equivalent of the studio), see{" "}
               <code className="text-xs">packages/ink-kotlin/example</code> in the repo.
             </p>
           </>
@@ -278,8 +278,8 @@ export default function BuildPage() {
             the studio
           </a>
           's <span className="font-medium">use in your app</span> panel, and copy code that
-          reproduces it stroke for stroke — the TypeScript, Swift, and Kotlin engines are
-          parity-locked to the float, so a pinned seed is a portable take.
+          reproduces it exactly: the TypeScript, Swift, and Kotlin engines are parity-locked
+          to the float, so a pinned seed draws the same strokes anywhere.
         </p>
         {/* tabIndex: the table scrolls sideways on narrow screens, and a
             scroll container must be focusable to scroll by keyboard. */}
@@ -314,9 +314,8 @@ export default function BuildPage() {
           <a className="underline underline-offset-2 hover:text-foreground" href="#/uses">
             use-case gallery
           </a>{" "}
-          stages the classics as live scenes: the onboarding hello, the signed agreement, the
-          handwritten postscript, and more. Every scene links back to the studio and to the
-          exact code that draws it.
+          has six worked examples: an onboarding hello, a signed agreement, a handwritten
+          postscript, and more. Each links back to the studio and to the code that draws it.
         </p>
       </Section>
 
@@ -326,8 +325,8 @@ export default function BuildPage() {
           <a className="underline underline-offset-2 hover:text-foreground" href="#/">
             studio
           </a>{" "}
-          exports any take as still or animated SVG, PNG, GIF, MP4, or raw stroke JSON — same
-          pipeline, same parameters, ready to drop into whatever you're making.
+          exports any take as still or animated SVG, PNG, GIF, or MP4, rendered client-side
+          from the same parameters the SDKs take.
         </p>
       </Section>
 
