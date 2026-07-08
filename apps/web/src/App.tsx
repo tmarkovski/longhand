@@ -981,9 +981,10 @@ export default function App() {
           strip's height is fixed so the canvas doesn't shift when buttons
           come and go. A paper change crossfades (transition-colors) — a new
           sheet slid under the ink, not a snap; color-only, so it stays under
-          reduced motion. */}
+          reduced motion. Raised (z-10) over the options tray docked behind
+          its bottom edge, so the paper and its shadow paint on top. */}
       <div
-        className="overflow-hidden rounded-2xl bg-card shadow-sm transition-colors duration-500 [--ink:var(--ink-light)] dark:[--ink:var(--ink-dark)]"
+        className="relative z-10 overflow-hidden rounded-2xl bg-card shadow-sm transition-colors duration-500 [--ink:var(--ink-light)] dark:[--ink:var(--ink-dark)]"
         style={{ ...(paper ? { background: paper } : undefined), ...inkShown }}
       >
         <div className="flex items-center gap-2 px-4 pt-3">
@@ -1181,10 +1182,16 @@ export default function App() {
         </div>
       </div>
 
+      {/* The options tray, docked behind the paper card (.options-dock in
+          styles.css): closed, its top edge tucks a little way under the
+          canvas — the summary line stays readable — and the pointer eases
+          it back down; open, it stays out until collapsed again. It
+          configures the canvas, so it hangs off the paper instead of
+          sitting beside it. */}
       <Collapsible
         open={optionsOpen}
         onOpenChange={setOptionsOpen}
-        className="rounded-2xl bg-[oklch(0.93_0.012_85)] shadow-sm dark:bg-[oklch(0.235_0.012_70)]"
+        className="options-dock rounded-2xl bg-[oklch(0.93_0.012_85)] shadow-sm dark:bg-[oklch(0.235_0.012_70)]"
       >
         {/* Collapsed, the trigger IS the card, so the hover tint covers it
             corner to corner; open, the trigger is just the header row and

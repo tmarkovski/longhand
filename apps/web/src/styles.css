@@ -317,3 +317,48 @@
     animation: none;
   }
 }
+
+/* The options tray is docked behind the paper card — it configures the
+ * canvas, so it lives under it rather than sitting beside it as its own
+ * card (the card is z-raised in App.tsx so it paints over the tray).
+ * Revealed, it hangs just below the paper with a sliver of desk between
+ * them; at rest it rides up behind the canvas. The slide is a transform,
+ * so it's not layout: the doors below hold still while the drawer moves
+ * in the desk gap above them. Opening the panel is real layout (the
+ * collapsible's height), so that push works on them as normal. */
+.options-dock {
+  position: relative;
+  /* Close most of the desk gap (gap-5, 20px): revealed, 6px remains. */
+  margin-top: -14px;
+  transition: transform 250ms ease-out;
+}
+
+/* A hit-area bridge over the desk sliver above the tray, so the pointer
+ * that revealed it can't land on bare desk mid-slide and flicker it
+ * shut. Under the card the raised paper wins the hit-test, so at rest
+ * the bridge can't start a hover on its own. */
+.options-dock::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  right: 0;
+  left: 0;
+  height: 8px;
+}
+
+/* Hover-capable pointers get the drawer: closed and untouched, the tray
+ * rides up until its top edge is a few pixels behind the canvas — the
+ * summary line stays readable just under the paper's edge — and the
+ * pointer (or tabbing to the trigger, or opening it) eases it back
+ * down. */
+@media (hover: hover) and (pointer: fine) {
+  .options-dock[data-closed]:not(:hover):not(:has(:focus-visible)) {
+    transform: translateY(-12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .options-dock {
+    transition: none;
+  }
+}
