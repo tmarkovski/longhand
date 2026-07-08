@@ -4,6 +4,11 @@ Type text, watch it written by a neural pen, and take the writing with you as
 a living vector file. Every stroke is generated on the client; there is no
 generation backend.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/demo-dark.gif" />
+  <img src="docs/demo-light.gif" alt="A line of text being written live in a generated hand, a GIF exported from the studio itself" />
+</picture>
+
 **trylonghand.com** · work in progress
 
 ## How it works
