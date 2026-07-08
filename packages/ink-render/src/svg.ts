@@ -20,8 +20,10 @@ export interface LineSvgOptions {
   renderer: "pen" | "ribbon";
   /** Model-to-display scale applied while laying out the line. */
   scale: number;
-  /** Whitespace around the ink, in display units. Defaults to 6. */
-  padding?: number;
+  /** Whitespace around the ink, in display units: one number for both
+   * axes, or separate horizontal/vertical amounts (how a caller pads a
+   * line out to a target canvas ratio). Defaults to 6. */
+  padding?: number | { x: number; y: number };
   /** Ink paint. Defaults to `currentColor` (inherit when inlined). */
   ink?: string;
   /** Background paint; omitted (transparent) by default. */
@@ -40,17 +42,22 @@ export interface LineLayout {
 }
 
 /** Lay the line out at `scale`, cropped to the ink plus `padding`. */
-export function layoutLine(line: InkLine, scale: number, padding: number): LineLayout {
+export function layoutLine(
+  line: InkLine,
+  scale: number,
+  padding: number | { x: number; y: number },
+): LineLayout {
+  const pad = typeof padding === "number" ? { x: padding, y: padding } : padding;
   const bounds = lineBounds(line);
   const placed = transformLine(line, {
     scale,
-    translateX: padding - bounds.minX * scale,
-    translateY: padding - bounds.minY * scale,
+    translateX: pad.x - bounds.minX * scale,
+    translateY: pad.y - bounds.minY * scale,
   });
   return {
     placed,
-    width: (bounds.maxX - bounds.minX) * scale + 2 * padding,
-    height: (bounds.maxY - bounds.minY) * scale + 2 * padding,
+    width: (bounds.maxX - bounds.minX) * scale + 2 * pad.x,
+    height: (bounds.maxY - bounds.minY) * scale + 2 * pad.y,
   };
 }
 

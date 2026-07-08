@@ -6,11 +6,12 @@
  * Exports lay out from the raw offsets — ink-proportional and tightly
  * cropped — never from the on-screen canvas fit (whose margins and height
  * cap are display concerns). The caller resolves every style knob
- * (colors, widths, pace) into `ExportStyle`, so this module stays free of
- * app state.
+ * (colors, widths, pace) into `ExportStyle`, and the per-take choices
+ * (canvas ratio, padding, frame rate, end pause) into `ExportOptions`, so
+ * this module stays free of app state.
  */
 
-import { lineBounds, offsetsToLine, type InkLine } from "@longhand/ink-core";
+import { lineBounds, offsetsToLine, type Bounds, type InkLine } from "@longhand/ink-core";
 import {
   alignLine,
   layoutLine,
@@ -39,6 +40,18 @@ export interface ExportStyle {
   msPerStep: number;
 }
 
+/** Per-take export choices, all optional (defaults match the classics). */
+export interface ExportOptions {
+  /** Canvas width:height to pad out to, or null to crop tight to the ink. */
+  ratio?: number | null;
+  /** Whitespace around the ink, in layout units (the ink is 200 tall). */
+  padding?: number;
+  /** Frames per second for the GIF/MP4 encodes. */
+  fps?: number;
+  /** Hold on the finished line — before the loop, or ending the video. */
+  holdMs?: number;
+}
+
 /** Ink height in layout units; everything else keys off this. */
 const INK_HEIGHT = 200;
 const PADDING = 40;
@@ -55,23 +68,47 @@ const MP4_SIZE = { height: 720, maxWidth: 1920 };
 const GIF_FPS = 25;
 const MP4_FPS = 30;
 
-/** Polish the raw offsets the same way the app's renderer does and pick
- * the ink-proportional export scale. */
-function exportLine(offsets: ReadonlyArray<[number, number, number]>, style: ExportStyle) {
+/** Even whitespace around the ink — the chosen padding on both axes, then
+ * one axis stretched (ink centered) when the tight crop is narrower or
+ * flatter than the canvas ratio asks for. The ink never scales down. */
+function canvasPadding(
+  bounds: Bounds,
+  scale: number,
+  options: ExportOptions,
+): { x: number; y: number } {
+  const base = options.padding ?? PADDING;
+  const inkWidth = (bounds.maxX - bounds.minX) * scale;
+  const inkHeight = (bounds.maxY - bounds.minY) * scale;
+  let width = inkWidth + 2 * base;
+  let height = inkHeight + 2 * base;
+  if (options.ratio) {
+    if (width / height < options.ratio) width = height * options.ratio;
+    else height = width / options.ratio;
+  }
+  return { x: (width - inkWidth) / 2, y: (height - inkHeight) / 2 };
+}
+
+/** Polish the raw offsets the same way the app's renderer does, pick the
+ * ink-proportional export scale, and resolve the canvas padding. */
+function exportLine(
+  offsets: ReadonlyArray<[number, number, number]>,
+  style: ExportStyle,
+  options: ExportOptions,
+) {
   const line =
     style.renderer === "ribbon"
       ? alignLine(offsetsToLine(offsets))
       : polishLine(offsetsToLine(offsets));
   const bounds = lineBounds(line);
   const scale = INK_HEIGHT / Math.max(bounds.maxY - bounds.minY, 1);
-  return { line, scale };
+  return { line, scale, padding: canvasPadding(bounds, scale, options) };
 }
 
-function svgOptions(style: ExportStyle, scale: number) {
+function svgOptions(style: ExportStyle, scale: number, padding: { x: number; y: number }) {
   return {
     renderer: style.renderer,
     scale,
-    padding: PADDING,
+    padding,
     ink: style.ink,
     background: style.paper ?? undefined,
     pen: { base: style.penBasePerScale * scale },
@@ -82,21 +119,25 @@ function svgOptions(style: ExportStyle, scale: number) {
 export function toStaticSvg(
   offsets: ReadonlyArray<[number, number, number]>,
   style: ExportStyle,
+  options: ExportOptions = {},
 ): Blob {
-  const { line, scale } = exportLine(offsets, style);
-  return new Blob([lineToSvg(line, svgOptions(style, scale))], { type: "image/svg+xml" });
+  const { line, scale, padding } = exportLine(offsets, style, options);
+  return new Blob([lineToSvg(line, svgOptions(style, scale, padding))], {
+    type: "image/svg+xml",
+  });
 }
 
 export function toAnimatedSvg(
   offsets: ReadonlyArray<[number, number, number]>,
   style: ExportStyle,
+  options: ExportOptions = {},
 ): Blob {
-  const { line, scale } = exportLine(offsets, style);
+  const { line, scale, padding } = exportLine(offsets, style, options);
   const svg = lineToAnimatedSvg(line, {
-    ...svgOptions(style, scale),
+    ...svgOptions(style, scale, padding),
     msPerStep: style.msPerStep,
     leadMs: LEAD_MS,
-    holdMs: HOLD_MS,
+    holdMs: options.holdMs ?? HOLD_MS,
   });
   return new Blob([svg], { type: "image/svg+xml" });
 }
@@ -123,9 +164,10 @@ function makePainter(
   offsets: ReadonlyArray<[number, number, number]>,
   style: ExportStyle,
   background: string | null,
+  options: ExportOptions,
 ): Painter {
-  const { line, scale } = exportLine(offsets, style);
-  const { placed, width, height } = layoutLine(line, scale, PADDING);
+  const { line, scale, padding } = exportLine(offsets, style, options);
+  const { placed, width, height } = layoutLine(line, scale, padding);
   const paintBackground = (context: OffscreenCanvasRenderingContext2D) => {
     if (background === null) {
       context.clearRect(0, 0, width, height);
@@ -241,9 +283,10 @@ function makeCanvas(
 export async function toPng(
   offsets: ReadonlyArray<[number, number, number]>,
   style: ExportStyle,
+  options: ExportOptions = {},
 ): Promise<Blob> {
   // PNG keeps transparency when no paper is chosen.
-  const painter = makePainter(offsets, style, style.paper);
+  const painter = makePainter(offsets, style, style.paper, options);
   const { canvas, context } = makeCanvas(painter, PNG_SIZE);
   painter.paint(context, painter.totalPoints);
   return canvas.convertToBlob({ type: "image/png" });
@@ -269,17 +312,23 @@ function frameSchedule(painter: Painter, style: ExportStyle, fps: number, holdMs
 export async function toGif(
   offsets: ReadonlyArray<[number, number, number]>,
   style: ExportStyle,
+  options: ExportOptions = {},
   onProgress?: EncodeProgress,
   signal?: AbortSignal,
 ): Promise<Blob> {
   // GIF transparency is binary and fringes badly, so it's always opaque.
-  const painter = makePainter(offsets, style, style.paper ?? "#ffffff");
+  const painter = makePainter(offsets, style, style.paper ?? "#ffffff", options);
   const { canvas, context, pixelWidth, pixelHeight } = makeCanvas(painter, GIF_SIZE);
-  const { frameMs, totalFrames, limitAt } = frameSchedule(painter, style, GIF_FPS, HOLD_MS);
+  const { frameMs, totalFrames, limitAt } = frameSchedule(
+    painter,
+    style,
+    options.fps ?? GIF_FPS,
+    options.holdMs ?? HOLD_MS,
+  );
 
   // Global palette from the finished line, so colors stay rock steady
   // across frames (the ink is few-colored by construction).
-  const preview = makePainter(offsets, style, style.paper ?? "#ffffff");
+  const preview = makePainter(offsets, style, style.paper ?? "#ffffff", options);
   const previewTarget = makeCanvas(preview, GIF_SIZE);
   preview.paint(previewTarget.context, preview.totalPoints);
   const finished = previewTarget.context.getImageData(0, 0, pixelWidth, pixelHeight);
@@ -322,21 +371,23 @@ export function videoSupported(): boolean {
 export async function toMp4(
   offsets: ReadonlyArray<[number, number, number]>,
   style: ExportStyle,
+  options: ExportOptions = {},
   onProgress?: EncodeProgress,
   signal?: AbortSignal,
 ): Promise<Blob> {
   if (!videoSupported()) throw new Error("video export needs a browser with WebCodecs");
+  const fps = options.fps ?? MP4_FPS;
   // H.264 has no alpha; the video always sits on paper (white by default).
-  const painter = makePainter(offsets, style, style.paper ?? "#ffffff");
+  const painter = makePainter(offsets, style, style.paper ?? "#ffffff", options);
   const { canvas, context, pixelWidth, pixelHeight } = makeCanvas(painter, MP4_SIZE, true);
-  const { frameMs, totalFrames, limitAt } = frameSchedule(painter, style, MP4_FPS, 1000);
+  const { totalFrames, limitAt } = frameSchedule(painter, style, fps, options.holdMs ?? 1000);
 
   const config: VideoEncoderConfig = {
     codec: "",
     width: pixelWidth,
     height: pixelHeight,
-    framerate: MP4_FPS,
-    bitrate: Math.min(12_000_000, Math.max(2_000_000, Math.round(pixelWidth * pixelHeight * MP4_FPS * 0.12))),
+    framerate: fps,
+    bitrate: Math.min(12_000_000, Math.max(2_000_000, Math.round(pixelWidth * pixelHeight * fps * 0.12))),
   };
   let muxerCodec: "avc" | "vp9" | "av1" | null = null;
   for (const candidate of MP4_CODECS) {
@@ -364,7 +415,7 @@ export async function toMp4(
   });
   encoder.configure(config);
 
-  const frameUs = Math.round((1000 / MP4_FPS) * 1000);
+  const frameUs = Math.round((1000 / fps) * 1000);
   for (let frame = 0; frame < totalFrames; frame++) {
     if (signal?.aborted) {
       encoder.close();
@@ -376,7 +427,7 @@ export async function toMp4(
       timestamp: frame * frameUs,
       duration: frameUs,
     });
-    encoder.encode(videoFrame, { keyFrame: frame % (MP4_FPS * 2) === 0 });
+    encoder.encode(videoFrame, { keyFrame: frame % (fps * 2) === 0 });
     videoFrame.close();
     onProgress?.(frame + 1, totalFrames);
     if (encoder.encodeQueueSize > 4) {
