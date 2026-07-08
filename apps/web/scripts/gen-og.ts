@@ -33,7 +33,9 @@ const TAKE: SnippetParams = {
   style: 2,
   seed: 7,
   renderer: "ribbon",
-  thickness: 1,
+  // A touch heavier than the studio's boot thickness: the card is seen
+  // small, so the stroke needs a bit more meat.
+  thickness: 1.25,
   speed: 1,
   ink: "#b3261e",
   paper: null,
@@ -96,13 +98,28 @@ const html = `<!doctype html><meta charset="utf-8"><style>
     gap: 24px; padding: 60px 120px 72px;
   }
   .ink { color: #b3261e; width: 100%; display: flex; justify-content: center; }
-  .ink svg { width: 100%; max-width: 880px; max-height: 320px; }
-  p { font-size: 31px; letter-spacing: 0.01em; color: #6d6455; }
+  .ink svg { width: 100%; max-width: 880px; max-height: 300px; }
+  p { font-size: 34px; font-weight: 450; letter-spacing: 0.01em; color: #4d4437; }
+  .cta {
+    margin-top: 8px;
+    padding: 15px 36px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #c93d2f 0%, #b3261e 55%, #9a1e16 100%);
+    color: #fdf8f0;
+    font-size: 25px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.22),
+      0 1px 2px 0 oklch(0.35 0.04 80 / 0.2),
+      0 6px 18px -2px oklch(0.35 0.04 80 / 0.25);
+  }
 </style>
 <div class="grain"></div>
 <main>
   <div class="ink">${svg}</div>
-  <p>neural handwriting synthesis for web, iOS, and Android</p>
+  <p>neural handwriting synthesis for web and mobile</p>
+  <div class="cta">remix your own</div>
 </main>`;
 
 const browser = await chromium.launch();
