@@ -147,10 +147,29 @@ fresh oracle. Pushes to `main` deploy to GitHub Pages via
 
 ## License
 
-Code license not yet chosen. Neither set of model weights is ours to
-license: the Graves weights descend from the
-[sjvasquez/handwriting-synthesis](https://github.com/sjvasquez/handwriting-synthesis)
-checkpoint (unlicensed), and the calligrapher weights are the file
-calligrapher.ai serves to browsers (also unlicensed). Both are committed in
-this repo as development assets. See `docs/plan.md` for the plan to train
-clean weights.
+Longhand's own code is licensed under either of
+[LICENSE-APACHE](LICENSE-APACHE) or [LICENSE-MIT](LICENSE-MIT), at your
+option. That covers `ink-core`, `ink-graves` and `ink-render` in TypeScript,
+Swift and Kotlin, the site in `apps/web`, `tools/` and the docs. `ink-graves`
+ports the MLX reference, which its author put in the public domain.
+
+Some parts aren't ours to license, so the license doesn't cover them:
+
+- **The calligrapher engine.** `ink-calligrapher` is a bit-exact port of the
+  engine calligrapher.ai serves to browsers (Sean Vasquez), which is
+  unlicensed, and so are its ports: `packages/ink-calligrapher`,
+  `packages/ink-swift/Sources/InkCalligrapher`,
+  `packages/ink-swift/Tests/InkCalligrapherTests` and
+  `packages/ink-kotlin/ink-calligrapher`.
+- **The model weights.** The Graves weights
+  (`packages/ink-graves/assets/graves-v2.bin`) descend from the
+  [sjvasquez/handwriting-synthesis](https://github.com/sjvasquez/handwriting-synthesis)
+  checkpoint, which is unlicensed and was trained on the research-only
+  IAM-OnDB. The calligrapher weights
+  (`packages/ink-calligrapher/assets/calligrapher-v1.bin`) are the file
+  calligrapher.ai serves, also unlicensed. Both are committed here as
+  development assets. See `docs/plan.md` for the plan to train clean weights.
+- **`vendor/`:** third-party code kept for evaluation (see
+  `vendor/README.md`).
+- **`graves-handwriting-mlx`:** the submodule keeps its own license, the
+  Unlicense.

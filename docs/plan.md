@@ -132,7 +132,7 @@ Details that matter:
 
 ## Risks (carried from the brief)
 
-1. **Weights licensing** is still the big one: the converted weights descend from the unlicensed sjvasquez checkpoint and research-only IAM-OnDB. Fine for a free tool while we build; must be resolved (own training run) before charging money. License request to the MLX port author is filed (breitburg/graves-handwriting-mlx#1) for the code side.
+1. **Weights licensing** is still the big one: the converted weights descend from the unlicensed sjvasquez checkpoint and research-only IAM-OnDB. Fine for a free tool while we build; must be resolved (own training run) before charging money. The code side is settled: the MLX port's author put it in the public domain (the Unlicense), and longhand's own code is MIT OR Apache-2.0, apart from the calligrapher port of unlicensed code (see the README's License section).
 2. **Safari video export** lacks reliable WebCodecs encoding; GIF fallback covers it, revisit later.
 3. **JS engine performance** on low-end devices; the week-1 gate and ONNX fallback cover it.
 

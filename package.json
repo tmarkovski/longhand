@@ -1,6 +1,7 @@
 {
   "name": "longhand",
   "version": "0.1.0",
+  "license": "SEE LICENSE IN README.md",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.28.0",
